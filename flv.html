@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>flvjs player</title>
+    <meta name="Access-Control-Allow-Origin" content="*">
+    <script src="common/js/jquery-1.12.3.min.js"></script>
+    
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+    <script>
+         function GetQueryString(name) {
+                //获取地址栏参数
+                var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+                var r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]); return null;
+            }
+            var flvurl='a1.flv';
+            var t= GetQueryString("key")
+            if(t!=null){
+                flvurl=t;
+            }
+    </script>
+</head>
+<body>
+    <div style="width: 100%; height: 70px;"> <input type="text" id="txturl" value=""  name="txturl" /> <br><input type="button" value="reload" onclick="reload();" style="width:250px;height: 30px;" /><br /></div> 
+    <script src="common/js/flv.min.js"></script>
+<video id="videoElement"  width="300px" height="400px"  autoplay  muted  controls ></video>  <!--controls -->
+
+ <br /><button onclick="aa();" style="width:250px;height: 50px;">pause</button> 
+<script>
+    if (flvjs.isSupported()) {  //判断当前浏览器是否支持播放
+        var videoElement = document.getElementById('videoElement');
+        var flvPlayer = flvjs.createPlayer({   //创建一个播放实例
+            type: 'flv', 
+            isLive: true, // 是否是直播流
+            hasAudio: true, // 是否有音频
+            hanVideo: true, // 是否有视频
+            url: flvurl//'http://cc.flowx.cn/a1.flv',
+            
+        }, {
+            enableWorker: false, //不启用分离线程
+            enableStashBuffer: true, //关闭IO隐藏缓冲区
+            reuseRedirectedURL: true, //重用301/302重定向url，用于随后的请求，如查找、重新连接等。
+            autoCleanupSourceBuffer: true //自动清除缓存
+        });
+        flvPlayer.attachMediaElement(videoElement); //将播放实例注册到video节点
+        flvPlayer.load();  //加载视频
+        // flvPlayer.play();   //播放视频
+       
+      
+    }
+
+    var state=1;
+    function aa(){
+        flvPlayer.pause();
+        if(state==1){
+            flvPlayer.pause();
+            state=2;
+        }
+        else if(state==2){
+            flvPlayer.play();
+            state=1;
+        }
+    }
+
+    document.body.addEventListener("mousedown", function(){
+    var vdo = $("video")[0]; //jquery
+    vdo.muted = false;
+    }, false);
+
+
+    function reload(){
+var data =$("#txturl").val();
+if (flvjs.isSupported()) {
+        var videoElement = document.getElementById('videoElement');
+        var flvPlayer = flvjs.createPlayer({
+            type: 'flv',
+            url: data
+        });
+        flvPlayer.attachMediaElement(videoElement);
+        flvPlayer.load();
+        flvPlayer.play();
+       
+      
+    }
+    }
+
+</script>
+</body>
+</html>
