@@ -1,0 +1,49 @@
+<html>
+<body id="bd">
+
+
+</body>
+<script>
+
+    function generateRandomSixDigitNumber() {
+      const min = 100000;
+      const max = 999999;
+      const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+      return randomNum.toString().padStart(6, '0');
+    }
+    </script>
+
+   
+<script>
+    var id =generateRandomSixDigitNumber();
+var ws = new WebSocket("ws://127.0.0.1:8083/ws?id="+id);
+ 
+ws.onopen = function(evt) {
+  console.log("Connection open ...");
+
+ 
+  setTimeout(send, 3000);
+};
+ 
+ws.onmessage = function(evt) {
+  console.log("Received Message: ", evt.data);
+  document.body.innerHTML = evt.data;
+};
+ 
+ws.onclose = function(evt) {
+  console.log("Connection closed.");
+};
+ 
+ws.onerror = function(evt) {
+  console.error("Error occured: ", evt.data);
+};
+
+function send(){
+    ws.send("{\"t\":\"6000\",\"useridx\":\""+id+"\",\"timestamp\":\"1701618474\",\"token\":\"de1e08f5e89b768a5b2fb4e319560ec2\"}");
+
+}
+</script>
+
+
+
+</html>
