@@ -21,7 +21,147 @@
 </head>
 
 <body>
-<javascript>window.location.href="Default.aspx";</javascript>
+<!-- header section -->
+<section class="banner" role="banner">
+<!--header navigation -->
+  <header id="header">
+    <div class="header-content clearfix"> <a class="logo" href="index.html"><img src="favicon.ico" alt=""></a>
+      <nav class="navigation" role="navigation">
+        <ul class="primary-nav">
+          <li><a href="http://cc.flowx.cn">CC</a></li>
+          <li><a href="contact.html">PAY</a></li>
+		  <!--<li><a href="#">External Link</a></li>-->
+        </ul>
+      </nav>
+      <a href="#" class="nav-toggle">Menu<span></span></a> </div>
+      </header>
+      <!--header navigation -->
+  </section>
+  <!-- header section -->
+  <!-- text banner section -->
+<section id="banner" class="banner no-padding">
+  <div class="container-fluid">
+    <div class="row no-gutter">
+      <div class="flexslider">
+        <ul class="slides">
+          <li>
+            <div class="col-md-12">
+              <blockquote>
+                <!--<h1>Flowxa</h1>-->
+               <p id="txtgoldwords"></p>
+              </blockquote>
+            </div>
+          </li>
+          <li>
+            <div class="col-md-12">
+              <blockquote>
+                <!--<h1>Flowxa</h1>-->
+                <p id="txtgoldwords2"></p>
+              </blockquote>
+            </div>
+          </li>
+        </ul>
+      </div>
+     </div>
+  </div>
+</section>
+<!-- Text banner section --> 
+<!-- portfolio section -->
+<section id="works" class="works section no-padding">
+  <div class="container-fluid">
+    <div class="row no-gutter">
+      <div class="col-lg-3 col-md-6 col-sm-6 work"> <a href="http://go.flowx.cn" class="work-box"> <img src="images/work-1.jpg" alt="">
+        <div class="overlay">
+          <div class="overlay-caption">
+            <h5>说话的艺术</h5>
+            <p><i class="fa fa-search-plus fa-2x"></i></p>
+          </div>
+        </div>
+        <!-- overlay --> 
+        </a> </div>
+      <div class="col-lg-3 col-md-6 col-sm-6 work"> <a href="http://cc.flowx.cn/BMI.aspx" class="work-box"> <img src="images/work-2.jpg" alt="">
+        <div class="overlay">
+          <div class="overlay-caption">
+            <h5>BMI</h5>
+            <p><i class="fa fa-search-plus fa-2x"></i></p>
+          </div>
+        </div>
+        <!-- overlay --> 
+        </a> </div>
+  
+    </div>
+  </div>
+</section>
+<!-- portfolio section --> 
+  <!-- footer -->
+<footer class="section footer">
+  <div class="footer-bottom">
+    <div class="container">
+      <div class="col-md-12">
+        <p>
+        <ul class="footer-share" style="display:none;">
+          <li><a href="#"><i class="fa fa-facebook"></i></a></li>
+          <li><a href="#"><i class="fa fa-twitter"></i></a></li>
+          <li><a href="#"><i class="fa fa-linkedin"></i></a></li>
+          <li><a href="#"><i class="fa fa-google-plus"></i></a></li>
+          <li><a href="#"><i class="fa fa-pinterest-p"></i></a></li>
+          <li><a href="#"><i class="fa fa-vimeo"></i></a></li>
+        </ul>
+        </p>
+        <p>©2024 Flowxa  浙ICP备17039044号-1<br>
+         </p>
+      </div>
+    </div>
+  </div>
+</footer>
+<!-- footer --> 
+<!-- JS FILES --> 
+<script src="https://cdn.staticfile.org/jquery/1.11.3/jquery.min.js"></script> 
+<script src="js/bootstrap.min.js"></script> 
+<script src="js/jquery.flexslider-min.js"></script> 
+<script src="js/jquery.fancybox.pack.js"></script> 
+<script src="js/jquery.waypoints.min.js"></script> 
+<script src="js/retina.min.js"></script> 
+<script src="js/modernizr.js"></script> 
+<script src="js/main.js"></script>
+
+    <script>
+		
+
+        function getwords() {
+
+            $.getJSON("http://go.flowx.cn/getwords", function (json) {
+               // alert(JSON.stringify(json));
+                $("#txtgoldwords").html(json.msg);
+                $("#txtgoldwords2").html(json.msg);
+            });
+
+            //$.ajax({
+            //    type: "GET",
+            //    url: "http://127.0.0.1:8888/ping",
+            //    async: false,
+            //    cache: false,
+            //    crossDomain:true,
+            //    dataType: 'json',
+            //    success: function (data) {
+            //       // alert(data);
+            //       // if (data.code == "ok") {
+            //           // var elems = data.message;
+            //        $("#txtgoldwords").html(data.message);
+            //           // $("#txtgoldwords2").html(elems);
+            //            // window.location.href = elems;//"GoBackAPP";
+            //            //var t = setTimeout("goapp()", 5000)
+
+            //       // } else {
+            //            //setalter(data.msg);
+            //       // }
+            //    }
+            //});
+
+        }
+        getwords();
+
+    </script>
 </body>
 </html>
 
