@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Markdown基本用法</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Markdown基本用法</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="h1标题">H1标题</h1>
+
+<p>Markdown 是一种轻量级标记语言，创始人为约翰·格鲁伯（<code>John Gruber</code>）。它允许人们“使用易读易写的纯文本格式编写文档，然后转换成有效的<code>XHTML</code>(或者<code>HTML</code>)文档”。这种语言吸收了很多在电子邮件中已有的纯文本标记的特性。</p>
+
+<h2 id="h2粗体-斜体-删除线">H2粗体、斜体、删除线</h2>
+
+<p><code>Go</code> is an open source <em>programming language</em> that <del>makes it easy</del> to build <strong>simple</strong>, <strong>reliable</strong>, and <strong>efficient</strong> software.</p>
+
+<h3 id="h3引用">H3引用</h3>
+
+<blockquote>
+<p><code>John Gruber</code> 在 2004 年创造了 <code>Markdown</code> 语言，在语法上有很大一部分是跟 <code>Aaron Swartz</code>共同合作的。这个语言的目的是希望大家使用“易于阅读、易于撰写的纯文字格式，并选择性的转换成有效的 <code>XHTML</code> (或是<code>HTML</code>)”。</p>
+</blockquote>
+
+<h4 id="h4列表">H4列表</h4>
+
+<ul>
+<li>高效率，自动排版。</li>
+<li>语法简洁优雅，轻量级，记忆负担小。</li>
+<li>更专注于内容，标签对内容的侵入性低。</li>
+<li>纯文本，不受编辑工具限制</li>
+<li><code>Markdown</code> 转 <code>HTML</code> 非常方便。<code>HTML</code>是整个万维网（<code>web</code>）的标记语言，但更重要的是，它也是目前主流电子书格式所用的标记语言。若采用 <code>Markdown</code>，对于日后的文件转换工作也大有裨益。</li>
+</ul>
+
+<h5 id="h5超链接和图片">H5超链接和图片</h5>
+
+<p><a href="http://www.baidu.com">http://www.baidu.com</a>  <a href="http://www.baidu.com">百度</a>  <a href="http://www.qq.com" title="腾讯官网">腾讯</a>  <img src="../static/favicon.ico" alt="" /></p>
+
+<h6 id="h6分割线">H6分割线</h6>
+
+<hr />
+
+<h1 id="代码块">代码块</h1>
+
+<pre><code>package main
+
+import &quot;fmt&quot;
+
+func main() {
+    fmt.Println(&quot;Hello, 世界&quot;)
+}
+</code></pre>
+
+<h1 id="表格">表格</h1>
+
+<table>
+<thead>
+<tr>
+<th>站点</th>
+<th>URL</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>百度</td>
+<td><a href="https://www.baidu.com">https://www.baidu.com</a></td>
+</tr>
+
+<tr>
+<td>腾讯</td>
+<td><a href="http://www.qq.com">http://www.qq.com</a></td>
+</tr>
+
+<tr>
+<td>谷歌</td>
+<td><a href="https://www.google.com.hk">https://www.google.com.hk</a></td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1 id="markdown源文件">Markdown源文件</h1>
+
+<pre>
+# H1标题
+Markdown 是一种轻量级标记语言，创始人为约翰·格鲁伯（`John Gruber`）。它允许人们“使用易读易写的纯文本格式编写文档，然后转换成有效的`XHTML`(或者`HTML`)文档”。这种语言吸收了很多在电子邮件中已有的纯文本标记的特性。
+
+## H2粗体和斜体
+`Go` is an open source *programming language* that ~~makes it easy~~ to build **simple**, **reliable**, and **efficient** software.
+
+### H3引用
+> `John Gruber` 在 2004 年创造了 `Markdown` 语言，在语法上有很大一部分是跟 `Aaron Swartz `共同合作的。这个语言的目的是希望大家使用“易于阅读、易于撰写的纯文字格式，并选择性的转换成有效的 `XHTML` (或是`HTML`)”。
+
+#### H4列表
+
+- 高效率，自动排版。
+- 语法简洁优雅，轻量级，记忆负担小。
+- 更专注于内容，标签对内容的侵入性低。
+- 纯文本，不受编辑工具限制
+- `Markdown` 转 `HTML` 非常方便。`HTML `是整个万维网（`web`）的标记语言，但更重要的是，它也是目前主流电子书格式所用的标记语言。若采用 `Markdown`，对于日后的文件转换工作也大有裨益。
+
+##### H5超链接和图片
+http://www.baidu.com  [百度](http://www.baidu.com)  [腾讯](http://www.qq.com "腾讯官网")  ![](../static/favicon.ico)
+
+###### H6分割线
+---
+
+# 代码块
+```
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, 世界")
+}
+```
+
+# 表格
+站点   | URL
+---    | ---
+百度   | https://www.baidu.com
+腾讯   | http://www.qq.com
+谷歌   | https://www.google.com.hk
+</pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-11.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-11.html">2016-11-08 19:45</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/markdown.html">Markdown</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/git.html">GIT基本用法</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/go-start.html">Golang环境搭建</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\Markdown基本用法.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\Markdown基本用法.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

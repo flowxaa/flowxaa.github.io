@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Let's Encrypt配置SSL免费证书</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Let's Encrypt配置SSL免费证书</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-let-s-encrypt介绍">一、Let&rsquo;s Encrypt介绍</h1>
+
+<p>Let&rsquo;s Encrypt是一个于2015年三季度推出的数字证书认证机构，旨在以自动化流程消除手动创建和安装证书的复杂流程，并推广使万维网服务器的加密连接无所不在，为安全网站提供免费的SSL/TLS证书。</p>
+
+<p>官网：<a href="https://letsencrypt.org/">https://letsencrypt.org/</a></p>
+
+<h1 id="二-let-s-encrypt安装">二、Let&rsquo;s Encrypt安装</h1>
+
+<p>官网上推荐使用<code>certbot</code>，安装起来也是相当方便。官网地址：<code>https://certbot.eff.org</code></p>
+
+<h2 id="2-1-下载certbot-auto">2.1 下载certbot-auto</h2>
+
+<p>选择软件和系统后会有安装提示：</p>
+
+<pre><code>wget https://dl.eff.org/certbot-auto
+chmod a+x certbot-auto
+</code></pre>
+
+<h2 id="2-2-申请证书">2.2 申请证书</h2>
+
+<pre><code>./certbot-auto certonly --webroot -w /data/gopath/src/github.com/pengbotao/itopic.go -d itopic.org  --agree-tos --email pengbotao@vip.qq.com
+</code></pre>
+
+<p>说明：<code>certbot-auto</code>需要<code>python3</code>支持，可参考<a href="./python-environment.html">Python多环境及包安装</a>安装。</p>
+
+<p>安装好虚拟环境后执行命令提示：<code>To use Certbot, packages from the EPEL repository need to be installed.</code></p>
+
+<p>目前参考该页面解决：<code>https://unix.stackexchange.com/questions/165916/trying-to-enable-epel-on-centos-6-and-it-wont-show-in-repolist</code></p>
+
+<pre><code>The CentOS Extras repository should be enabled by default, so you can just run:
+
+sudo rpm -e epel-release
+to remove the existing package and then:
+
+sudo yum install epel-release
+to enable EPEL.
+</code></pre>
+
+<p>证书安装之后提示安装路径：</p>
+
+<pre><code>IMPORTANT NOTES:
+ - Congratulations! Your certificate and chain have been saved at:
+   /etc/letsencrypt/live/itopic.org/fullchain.pem
+   Your key file has been saved at:
+   /etc/letsencrypt/live/itopic.org/privkey.pem
+   Your cert will expire on 2019-06-07. To obtain a new or tweaked
+   version of this certificate in the future, simply run certbot-auto
+
+   again. To non-interactively renew *all* of your certificates, run
+   &quot;certbot-auto renew&quot;
+ - Your account credentials have been saved in your Certbot
+   configuration directory at /etc/letsencrypt. You should make a
+   secure backup of this folder now. This configuration directory will
+   also contain certificates and private keys obtained by Certbot so
+   making regular backups of this folder is ideal.
+ - If you like Certbot, please consider supporting our work by:
+
+   Donating to ISRG / Let's Encrypt:   https://letsencrypt.org/donate
+   Donating to EFF:                    https://eff.org/donate-le
+</code></pre>
+
+<h2 id="2-3-nginx使用证书">2.3 Nginx使用证书</h2>
+
+<p>本站点下Nginx配置方式如下，配置之后访问<code>https</code>访问正常即可。</p>
+
+<pre><code>server
+{
+    server_name itopic.org;
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/itopic.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/itopic.org/privkey.pem;
+    root /data/gopath/src/github.com/pengbotao/itopic.go;
+
+    location / {
+        if ($request_uri = &quot;/&quot;) {
+            proxy_pass http://127.0.0.1:8001;
+        }
+        if (!-e $request_filename) {
+            proxy_pass http://127.0.0.1:8001;
+        }
+    }
+}
+</code></pre>
+
+<p>同时将原站点跳转到<code>https</code>:</p>
+
+<pre><code>server
+{
+    listen 80;
+    server_name itopic.org;
+    return 301 https://itopic.org$request_uri;
+}
+</code></pre>
+
+<h1 id="三-刷新证书">三、刷新证书</h1>
+
+<p>免费证书的有效期为90天，做一次自动刷新即可(每2个月的0点过5分刷新)。</p>
+
+<pre><code>5 0 * */2 * /root/letsencrypt/certbot-auto renew --renew-hook &quot;/usr/local/server/nginx1.15.3/sbin/nginx -s reload&quot;
+</code></pre>
+
+<hr />
+
+<ul>
+<li>[1] <a href="https://segmentfault.com/a/1190000012343679">启用 https 简单免费的 Let&rsquo;s Encrypt SSL证书配置</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2018-01.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2018-01.html">2018-01-09 18:52</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/常用软件.html">常用软件</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/linux-sysctl.html">CentOS（ 5 ）- 内核参数优化</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/graphviz.html">Graphviz绘图 - DOT语言</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\常用软件\Let's Encrypt配置SSL免费证书.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\常用软件\Let's Encrypt配置SSL免费证书.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

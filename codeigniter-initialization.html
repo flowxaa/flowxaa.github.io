@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>CodeIgniter ( 1 ) - 项目初始化</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">CodeIgniter ( 1 ) - 项目初始化</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-目录结构">一、目录结构</a></li>
+<li><a href="#二-环境配置-svn配置">二、环境配置、SVN配置</a></li>
+<li><a href="#三-权限-调试-项目发布">三、权限、调试、项目发布</a>
+<ul>
+<li><a href="#3-1-目录权限">3.1. 目录权限</a></li>
+<li><a href="#3-2-开启调试">3.2 开启调试</a></li>
+</ul></li>
+<li><a href="#3-3-项目发布">3.3 项目发布</a></li>
+</ul>
+</nav>
+
+<h1 id="一-目录结构">一、目录结构</h1>
+
+<p>CodeIgniter框架已帮我们配置好了项目目录结构，来看看<code>Codeigniter</code>的目录结构：</p>
+
+<p><img src="../../static/uploads/CodeIgniter-Folder-1.png" alt="" /></p>
+
+<ul>
+<li><strong>index.php</strong>： CodeIgniter单一入口文件。</li>
+<li><strong>system</strong>： 框架目录，Codeigniter核心文件和自带的类库、函数等。</li>
+<li><strong>application</strong>： 应用目录，包括控制器、模型、配置、类库等等，所有的PHP代码都写在该目录中。</li>
+</ul>
+
+<p>CI提供的默认结构可能是最方便、快速的，但不一定是最好的。可以看到入口文件和application、system目录处于同一级别，这意味着web目录也可以访问到<code>application</code>、<code>system</code>中的内容。虽然CI对每个目录做了.htaccess限制，但依然存在潜在的危险。可能由于服务器配置不支持或不完善导致某些目录可以被访问到。并且随着开发的不断进行，我们可能会在每一个目录中放一些文件，即便根目录，当这些不该被访问到的文件成为可能时，潜在的危险就产生了。</p>
+
+<p><strong>该如何调整？</strong></p>
+
+<p>其实很简单，可以把静态资源和入口文件放在一起，<code>application</code>和<code>system</code>放置在<code>web</code>目录之外，参考下图：</p>
+
+<p><img src="../../static/uploads/CodeIgniter-Folder-2.png" alt="" /></p>
+
+<p>调整之后所有需要外部可访问的图片、样式、脚本等就都放在<code>public</code>目录下即可。那<code>Codeigniter</code>为什么还这么放呢？目录的调整需要有相关的权限才行，如果服务器没调整的权限，就不行了。CI本身也提倡把应用和框架放在根目录之外。</p>
+
+<p><strong>所以，不该让用户访问到的文件坚决不让用户存在访问的可能性。</strong></p>
+
+<p>最后回头看看自己的项目，日志文件是否乱放而且在可访问的目录下，不该访问到的缓存、模版文件是否都可以访问到，一些备份的文件是否也直接在根目录下？</p>
+
+<h1 id="二-环境配置-svn配置">二、环境配置、SVN配置</h1>
+
+<p>先来看一个实际的例子，项目中存在这样一个配置文件：</p>
+
+<pre><code>
+$STATUS = 'normal'; //测试为test,正式为normal
+$KEY_INFO = array(
+    'a_test' =&gt; array(
+        'key' =&gt; 'a_test_key',
+        'value' =&gt; 'a_test_value'
+    ),
+    'a_normal' =&gt; array(
+        'key' =&gt; 'a_normal_key',
+        'value' =&gt; 'a_normal_value'
+    ),
+    'b_test' =&gt; array(
+        'key' =&gt; 'b_test_key',
+        'value' =&gt; 'b_test_value'
+    ),
+    'b_normal' =&gt; array(
+        'key' =&gt; 'b_normal_key',
+        'value' =&gt; 'b_normal_value'
+    ),
+);
+</code></pre>
+
+<p>生产环境和测试环境的开关通过<code>$STATUS</code>变量来控制，而<code>$STATUS</code>定义和配置文件在同一个文件中，这意味着每次发布的时候都需要把这个值改成<code>normal</code>，测试的时候再调整回来，这样就无缘无故增加了发布的难度和错误产生的几率，每次提交的时候都得小心翼翼。产生该问题的主要原因就是把环境和配置没有分离开，环境和配置耦合在一个文件里了。很多时候我们写一个类的时候也会有类似的做法，将类需要配置的信息直接写死在属性中，不方便调整。</p>
+
+<p>所以多环境的配置是十分有必要的，而<code>Codeigniter</code>框架是支持多环境配置的，环境的配置在<code>index.php入</code>口文件的第21行</p>
+
+<pre><code>/*
+ *---------------------------------------------------------------
+ * APPLICATION ENVIRONMENT
+ *---------------------------------------------------------------
+ *
+ * You can load different configurations depending on your
+ * current environment. Setting the environment also influences
+ * things like logging and error reporting.
+ *
+ * This can be set to anything, but default usage is:
+ *
+ *     development
+ *     testing
+ *     production
+ *
+ * NOTE: If you change these, also change the error_reporting() code below
+ *
+ */
+    define('ENVIRONMENT', 'development');
+</code></pre>
+
+<p>即CI开篇就定义了环境配置，那不同的环境配置会影响到哪些方面？</p>
+
+<ul>
+<li>1、 报错机制。不同的环境设置的报错级别不同，如开发环境（development）会显示所有错误信息，而生产环境（production）则会屏蔽所有错误信息。</li>
+<li>2、 加载的配置文件不同，从而实现多套环境配置。</li>
+</ul>
+
+<p>在开发过程中会将数据库配置设置为测试服或本机，而生成环境下会修改为正式服。那这么多环境该如何设置？</p>
+
+<p>先看看application目录下的config目录，该目录主要为系统的配置目录，如数据库配置、路由配置等。以数据库配置为例，当连接DB时，会读取config/database.php的配置文件，但这种情况是在没有自定义配置时。当我们定义ENVIRONMENT为development是，并创建config/development/database.php时，系统会从此环境来读取数据库配置，而非config/database.php</p>
+
+<p>所以针对开发环境我们可以创建development目录，并将开发的配置文件放置于此目录下，创建production目录，用于发布时生产环境的配置，如下图所示：</p>
+
+<p><img src="../../static/uploads/CodeIgniter-Config.png" alt="" /></p>
+
+<p><strong>注意:</strong></p>
+
+<p>对于个人定义的配置文件，若通过<code>$this-&gt;load-&gt;config</code>的方式加载，也适用多套环境，若是通过include加载则不行。</p>
+
+<p>环境配置完之后还需要配合SVN的管理，方便日常的工作。<strong>那针对多种环境SVN要如何配置?</strong></p>
+
+<p>创建项目的时候，在config下创建<code>development</code>目录和<code>production</code>目录，并将两个目录提交到SVN,然后忽略两个目录里面的所有文件。那么其他人down下来的时候，会存在这两个目录，但目录是空的，若个人有特殊配置，拷贝相应的配置文件到<code>ENVIRONMENT</code>目录下即可，既可自定义，又无需担心提交到SVN。</p>
+
+<p>至于怎么忽略文件夹里面的内容，可参考如下方式：</p>
+
+<p>在development目录下随意创建个 a.txt 和 a 目录，选择两个文件，右键SVN选项中按扩展名忽略，并提交到SVN即可。</p>
+
+<p><strong>SVN应尽可能的保持干净，以免因疏忽而导致提交异常代码到SVN，从而影响到其他人的开发效率和生产环境的正常功能。</strong></p>
+
+<h1 id="三-权限-调试-项目发布">三、权限、调试、项目发布</h1>
+
+<p>碰到过这样子的情况，测试环境部署某个项目，配置好了站点以及修改权限等配置后可以访问，但登录提交却直接刷新本页面，没有正常跳转到其他地址，后来查找原因是某个目录没有写权限。我们在开发的时候自己常常比较清楚该怎么配置，但后面他人接手时就不会这么清楚了。所以开发的时候我们应当尽可能的减少一些不必要的异常，这里完全可以把该目录移到cache目录下。</p>
+
+<p>接下来看看CI初始化时还需要做的一些事情：</p>
+
+<h2 id="3-1-目录权限">3.1. 目录权限</h2>
+
+<p>application目录的cache目录和logs目录分别用来存放缓存和日志文件，需要设置为递归可写。</p>
+
+<p><strong>cache：</strong></p>
+
+<ul>
+<li>1、 一般用来存放输出缓存，模版缓存，一些数据的文件缓存，通常情况下这里的各种缓存是可删除的，删除后不会对系统有什么影响。所以若是不可删除的数据，则需要考虑下是否放置该目录，避免因其他操作删除而影响系统运行。</li>
+<li>2、 该目录可以作为缓存的唯一目录。过多的缓存目录将会使发布变得困难，或者因为文件权限文件而产生问题。
+尽可能少的目录权限调整让系统变得更简单。</li>
+</ul>
+
+<p><strong>log：</strong> 主要用来记录运行日志，开启系统日志后会在该目录下生成log-{date}.php的日志文件。</p>
+
+<h2 id="3-2-开启调试">3.2 开启调试</h2>
+
+<p>CI中允许你开启或禁用评测器，评测器将在页的底部显示测试基准点或调试、优化需要的其他数据。在控制器任何位置插入下面语句即可。</p>
+
+<pre><code>$this-&gt;output-&gt;enable_profiler(TRUE);
+</code></pre>
+
+<p>其他开发环境相关调整：</p>
+
+<ul>
+<li>1、 环境设置为development，框架默认为development</li>
+<li>2、 设置config.php中的日志记录等级（log_threshold），一般设置为1即可，方便查看系统运行中的错误日志记录。</li>
+<li>3、 设置database.php中的调试开关（db_debug），开启调试，有SQL出错将直接在页面上打印，方便查看。</li>
+</ul>
+
+<h1 id="3-3-项目发布">3.3 项目发布</h1>
+
+<p>1、发布PHP代码和创建相应数据库，并更改服务器配置增加新的站点并指向到public目录。</p>
+
+<p>2、是否需要需要配置重定向，重定向某些URL以及去掉地址栏的index.php</p>
+
+<p><strong>Apache中.htaccess去掉index.php</strong></p>
+
+<pre><code>&lt;IfModule mod_rewrite.c&gt;
+RewriteEngine on
+  
+# if a directory or a file exists, use it directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+  
+# otherwise forward it to index.php
+RewriteRule . index.php
+&lt;/IfModule&gt;
+</code></pre>
+
+<p><strong>Nginx配置</strong></p>
+
+<pre><code>server {
+    listen       80;
+    server_name  s.local;
+    index index.php;
+    root  /var/www/scaffold;
+  
+    if (!-e $request_filename) {
+        rewrite ^.*$ /index.php last;
+    }
+    location ~ .*\.(php|php5)?$ {
+        fastcgi_pass unix:/tmp/php-cgi.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_param PATH_INFO $fastcgi_script_name;
+    }
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$ {
+            expires      30d;
+    }
+    location ~ .*\.(js|css)?$ {
+            expires      1h;
+    }
+    access_log off;
+}
+</code></pre>
+
+<p>3、修改index.php中development为production，config下若无production目录则创建production目录，拷贝database.php 以及其他正式配置文件到production目录下，并关闭DB的调试模式以及要调整的地方。</p>
+
+<p>4、 修改目录权限，application目录下cache和log目录必须可写。</p>
+
+<p>5、访问站点测试功能是否正常。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2013-10.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2013-10.html">2013-10-27 12:42</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/php.html">PHP</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/codeigniter.html">CodeIgniter</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/What-kind-of-math-education-do-we-need.html">随记：我们需要怎样的数学教育？</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/codeigniter-config.html">CodeIgniter ( 2 ) - 配置详解</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\php\CodeIgniter ( 1 ) - 项目初始化.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\php\CodeIgniter ( 1 ) - 项目初始化.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

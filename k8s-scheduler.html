@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes基础 ( 8 ) - 调度器</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes基础 ( 8 ) - 调度器</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a>
+<ul>
+<li><a href="#1-1-流程说明">1.1 流程说明</a></li>
+<li><a href="#1-2-调度目标">1.2 调度目标</a></li>
+<li><a href="#1-3-调度步骤">1.3 调度步骤</a></li>
+</ul></li>
+<li><a href="#二-调度策略">二、调度策略</a>
+<ul>
+<li><a href="#2-1-预选策略">2.1 预选策略</a></li>
+<li><a href="#2-2-优选策略">2.2 优选策略</a></li>
+</ul></li>
+<li><a href="#三-node调度">三、node调度</a>
+<ul>
+<li><a href="#3-1-nodename">3.1 nodeName</a></li>
+<li><a href="#3-2-nodeselector">3.2 nodeSelector</a></li>
+<li><a href="#3-1-nodeaffinity">3.1 nodeAffinity</a></li>
+</ul></li>
+<li><a href="#四-pod调度">四、pod调度</a>
+<ul>
+<li><a href="#4-1-pod亲和性">4.1 pod亲和性</a></li>
+<li><a href="#4-2-pod反亲和性">4.2 pod反亲和性</a></li>
+</ul></li>
+<li><a href="#五-污点与容忍">五、污点与容忍</a>
+<ul>
+<li><a href="#5-1-定义污点">5.1 定义污点</a></li>
+<li><a href="#5-2-定义容忍">5.2 定义容忍</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<p>k8s集群后面的资源是一个由许多Node节点组成的大的资源池，每个Node的硬件配置可能不完全相同，比如有些Node内存大，有些CPU多，有些是SSD等等。而Pod则会运行在这样一个资源池里，但每个Pod对资源的要求是不一样的，怎么样合理的分配资源池的资源则是一个很重要的问题。调度器解决的正是Pod该运行在哪一个Node里的问题。</p>
+
+<blockquote>
+<p>In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes so that Kubelet can run them.</p>
+</blockquote>
+
+<h2 id="1-1-流程说明">1.1 流程说明</h2>
+
+<p><img src="../../static/uploads/k8s-scheduler.png" alt="" /></p>
+
+<p>这个网上找的一个创建Pod的基本流程，调度器会为Pod选择合适的Node然后告诉给APIServer，如果找不到则处于Pending状态，直到遇到合适的资源。</p>
+
+<h2 id="1-2-调度目标">1.2 调度目标</h2>
+
+<ul>
+<li>公平性：在调度Pod时需要公平的决策，每个节点都有被分配的机会，调度器需要针对不同节点作出平衡决策。</li>
+<li>资源高效：最大化提升所有可调度资源的利用率，使有限的CPU、内存等资源服务尽可能更多的Pod。</li>
+<li>性能：能快速的完成对大规模Pod的调度工作，在集群规模扩增的情况下，依然能确保调度的性能。</li>
+<li>灵活性：在实际生产中，用户希望Pod的调度策略是可扩展的，从而可以定制化调度算法以处理复杂的实际问题。因此平台要允许多种调度器并行工作，并支持自定义调度器。</li>
+</ul>
+
+<h2 id="1-3-调度步骤">1.3 调度步骤</h2>
+
+<p>为了给Pod找到合适的Node对象，可以分为2个步骤：</p>
+
+<ul>
+<li>预选（Filtering）：预选就是从所有的节点里先排除掉硬性条件都不满足的节点，比如Cpu、内存有硬性要求，如果一个都没找到则Pod不会被调度。</li>
+<li>优选（Scoring）：留下的Node都是可用的，但还会有一些相对合适点，调度器会根据一系列维度进行评分，然后将Pod分配给分数排名最高的节点，如果还有多个则随机选一个。</li>
+</ul>
+
+<p>有点找对象的意思，房子、车子是硬性要求，还得善良、大方、长得漂亮。为了实现满足这些，k8s实现了一系列的具体调度策略。</p>
+
+<h1 id="二-调度策略">二、调度策略</h1>
+
+<h2 id="2-1-预选策略">2.1 预选策略</h2>
+
+<h2 id="2-2-优选策略">2.2 优选策略</h2>
+
+<h1 id="三-node调度">三、node调度</h1>
+
+<p>上面是理论层面的一些信息，在实际运行中可以通过配置的方式来实现对调度策略的干预。比如Reids部署到内存型的机器上，有IP限制的服务部署到指定的服务节点上，有以下三种方式实现对pod调度到node的干预，解决的是pod与node之间的关系。</p>
+
+<h2 id="3-1-nodename">3.1 nodeName</h2>
+
+<pre><code>$ kubectl get node
+NAME             STATUS   ROLES    AGE   VERSION
+docker-desktop   Ready    master   11d   v1.19.3
+</code></pre>
+
+<p>这里可以看到node的名称， 可以直接根据指定名称来确定pod可以运行在哪个节点上，如果找不到指定的节点pod将处于pengding状态。</p>
+
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-go-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-go-demo
+  template:
+    metadata:
+      labels:
+        app: k8s-go-demo
+    spec:
+      nodeName: docker-desktop
+      containers:
+      - name: k8s-go-demo
+        image: pengbotao/k8s-go-demo
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 38001
+</code></pre>
+
+<h2 id="3-2-nodeselector">3.2 nodeSelector</h2>
+
+<p>比nodeName灵活一点，pod调度时可以根据label进行筛选，相当于有了分组的概念，前提需要先给node打上对应的label，打标签方式如下(pod与node相同)：</p>
+
+<pre><code>Examples:
+  # Update pod 'foo' with the label 'unhealthy' and the value 'true'.
+  kubectl label pods foo unhealthy=true
+
+  # Update pod 'foo' with the label 'status' and the value 'unhealthy', overwriting any existing value.
+  kubectl label --overwrite pods foo status=unhealthy
+
+  # Update all pods in the namespace
+  kubectl label pods --all status=unhealthy
+
+  # Update a pod identified by the type and name in &quot;pod.json&quot;
+  kubectl label -f pod.json status=unhealthy
+
+  # Update pod 'foo' only if the resource is unchanged from version 1.
+  kubectl label pods foo status=unhealthy --resource-version=1
+
+  # Update pod 'foo' by removing a label named 'bar' if it exists.
+  # Does not require the --overwrite flag.
+  kubectl label pods foo bar-
+</code></pre>
+
+<p>然后就可以通过指定pod.spec.nodeSelector来指定pod想运行在的节点，比如本地这里就会报不匹配：</p>
+
+<blockquote>
+<p>Warning  FailedScheduling  9s    default-scheduler  0/1 nodes are available: 1 node(s) didn&rsquo;t match node selector.</p>
+</blockquote>
+
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-go-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-go-demo
+  template:
+    metadata:
+      labels:
+        app: k8s-go-demo
+    spec:
+      nodeSelector:
+        env: sandbox
+      containers:
+      - name: k8s-go-demo
+        image: pengbotao/k8s-go-demo
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 38001
+</code></pre>
+
+<h2 id="3-1-nodeaffinity">3.1 nodeAffinity</h2>
+
+<p>nodeSelector是白名单操作方式，但往往还有一些组合方式不足以支撑，这个时候就可以使用nodeAffinity来实现。从策略上可以分为硬策略（required）必须满足否则pending和软策略（preferred）优先满足但不保证。</p>
+
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>requiredDuringSchedulingIgnoredDuringExecution</td>
+<td>required</td>
+<td>必须满足，否则pending，IgnoredDuringExecution表示运行中状态标签若变化可忽略，让pod仍然继续运行</td>
+</tr>
+
+<tr>
+<td>preferredDuringSchedulingIgnoredDuringExecution</td>
+<td>preferred</td>
+<td>优先但不保证</td>
+</tr>
+</tbody>
+</table>
+
+<p>还有两种但貌似还没实现，文档里查不到，和前面的区别就是当标签变化不在满足条件时则重新选择符合的节点：</p>
+
+<ul>
+<li>requiredDuringSchedulingRequiredDuringExecution</li>
+<li>preferredDuringSchedulingRequiredDuringExecution</li>
+</ul>
+
+<p>示例：</p>
+
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-go-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-go-demo
+  template:
+    metadata:
+      labels:
+        app: k8s-go-demo
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: env
+                operator: In
+                values: 
+                - sandbox
+                - test
+      containers:
+      - name: k8s-go-demo
+        image: pengbotao/k8s-go-demo
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 38001
+</code></pre>
+
+<p>表示必须是打了env标签为sandbox或者test的节点，本地默认还没打，程序处于pengding，打上标签后运行成功。</p>
+
+<pre><code>$ kubectl label node docker-desktop env=sandbox
+</code></pre>
+
+<p>其中operator有：In、NotIn、Exists、DoesNotExist、Gt、Lt ，比如要指定打了env=sandbox标签或者没有打过标签的：</p>
+
+<pre><code>    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: env
+                operator: In
+                values: 
+                - sandbox
+            - matchExpressions:
+              - key: env
+                operator: DoesNotExist
+</code></pre>
+
+<p>nodeSelectorTerms下的多个条件满足一个就行，matchExpressions下的需要满足所有条件才行。如果是指定preferredDuringSchedulingRequiredDuringExecution则可以这么使用：</p>
+
+<pre><code>    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1 #权重，取值范围为 1-100
+            preference:
+              matchExpressions:
+              - key: env
+                operator: In
+                values: 
+                - prod
+</code></pre>
+
+<h1 id="四-pod调度">四、pod调度</h1>
+
+<p>node亲和性是根据node的标签给pod找node，而pod亲和性则更细一些，考虑的是pod与其他pod之间的亲和性。</p>
+
+<ul>
+<li>podAffinity：匹配pod标签，觉得pod可以和哪些pod运行在一起</li>
+<li>podAntiAffinity：pod反亲和性，表示不可以运行和哪些pod运行在一起</li>
+</ul>
+
+<p>我们可以对Node打标签，系统也会预设一些标签：</p>
+
+<table>
+<thead>
+<tr>
+<th>标签</th>
+<th>示例</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>failure-domain.beta.kubernetes.io/region</td>
+<td>cn-hangzhou</td>
+</tr>
+
+<tr>
+<td>failure-domain.beta.kubernetes.io/zone</td>
+<td>cn-hangzhou-h</td>
+</tr>
+
+<tr>
+<td>kubernetes.io/arch</td>
+<td>amd64</td>
+</tr>
+
+<tr>
+<td>kubernetes.io/hostname</td>
+<td>cn-hangzhou.192.168.0.100</td>
+</tr>
+
+<tr>
+<td>kubernetes.io/os</td>
+<td>linux</td>
+</tr>
+
+<tr>
+<td>beta.kubernetes.io/instance-type</td>
+<td>ecs.c6.4xlarge</td>
+</tr>
+</tbody>
+</table>
+
+<p>云厂商也会打一些标签，比如：</p>
+
+<table>
+<thead>
+<tr>
+<th>标签</th>
+<th>示例</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>alibabacloud.com/nodepool-id</td>
+<td></td>
+</tr>
+
+<tr>
+<td>topology.diskplugin.csi.alibabacloud.com/zone</td>
+<td>cn-hangzhou-h</td>
+</tr>
+
+<tr>
+<td>topology.kubernetes.io/region</td>
+<td>cn-hangzhou</td>
+</tr>
+
+<tr>
+<td>topology.kubernetes.io/zone</td>
+<td>cn-hangzhou-h</td>
+</tr>
+</tbody>
+</table>
+
+<p>运行在一起的意思时可以根据指定某些标签比如都是linux系统，都在某一区域等，可以通过topologyKey来指定。</p>
+
+<p>用法同node类似，通过label选择时支持的操作符有：In、NotIn、Exists、DoesNotExist</p>
+
+<h2 id="4-1-pod亲和性">4.1 pod亲和性</h2>
+
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-go-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-go-demo
+  template:
+    metadata:
+      labels:
+        app: k8s-go-demo
+    spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 50
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: service
+                  operator: In
+                  values: 
+                  - order
+      containers:
+      - name: k8s-go-demo
+        image: pengbotao/k8s-go-demo
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 38001
+</code></pre>
+
+<p>也可以使用requiredDuringSchedulingIgnoredDuringExecution</p>
+
+<pre><code>    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values: 
+                - order
+            topologyKey: kubernetes.io/hostname
+</code></pre>
+
+<p>通过topologyKey定义位置划分方式，上面表示想要或者必须和运行了service=order的pod运行在一起，通过hostname标签来区分，不过往往hostname都是唯一的，也就是得运行在同一个节点。</p>
+
+<blockquote>
+<p>pod的亲和性属于比较细的场景了，topologyKey设置自定义的标签留待以后碰到了在测试。</p>
+</blockquote>
+
+<h2 id="4-2-pod反亲和性">4.2 pod反亲和性</h2>
+
+<p>定义在字段pod.spec.affinity.podAntiAffinity，使用方式和上面是一样，只是逻辑是反的。</p>
+
+<h1 id="五-污点与容忍">五、污点与容忍</h1>
+
+<p>污点（taints）与容忍（tolerations）也是用来定义Pod与Node的调度关系，污点打在Node上，容忍设置在Pod上。当Node被打上污点时按字面理解就是该Node有缺陷，如果Pod可以容忍该缺陷才有可能调度到该Node上。</p>
+
+<h2 id="5-1-定义污点">5.1 定义污点</h2>
+
+<pre><code>定义污点
+$ kubectl taint nodes [node] key=value[effect]
+删除污点，和Label类似加个减号
+$ kubectl taint nodes [node] key=value[effect]-
+查看污点
+$ kubectl describe node docker-desktop | grep Taints
+</code></pre>
+
+<p>value可以省略，其中effect的可选值有： [ NoSchedule | PreferNoSchedule | NoExecute ]</p>
+
+<ul>
+<li>NoSchedule：必须设置容忍才会调度，否则不会调度。不会驱逐Node上已有Pod</li>
+<li>PreferNoSchedule：未设置容忍的Pod尽量不会调度到该节点，但还是会被调度到。不会驱逐Node上已有Pod</li>
+<li>NoExecute：同NoSchedule，但会驱逐Node上已有Pod</li>
+</ul>
+
+<p>示例：</p>
+
+<pre><code>$ kubectl taint nodes docker-desktop env=test:NoSchedule
+node/docker-desktop tainted
+$ kubectl describe node docker-desktop | grep Taints
+Taints:             env=test:NoSchedule
+$ kubectl taint nodes docker-desktop env-
+node/docker-desktop untainted
+</code></pre>
+
+<h2 id="5-2-定义容忍">5.2 定义容忍</h2>
+
+<p>当设置污点NoSchedule，但不设置容忍时Pod会处于Pengding并提示：</p>
+
+<blockquote>
+<p>default-scheduler  0/1 nodes are available: 1 node(s) had taint {env: test}, that the pod didn&rsquo;t tolerate.</p>
+</blockquote>
+
+<p>容忍设置方式</p>
+
+<pre><code>$ kubectl describe node docker-desktop | grep Taints
+Taints:             env=test:NoSchedule
+
+$ kubectl apply -f k8s-go-demo.yaml
+$ cat k8s-go-demo.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-go-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-go-demo
+  template:
+    metadata:
+      labels:
+        app: k8s-go-demo
+    spec:
+      tolerations:
+      - key: &quot;env&quot;
+        value: &quot;test&quot;
+        operator: &quot;Equal&quot;
+        effect: &quot;NoSchedule&quot;
+      containers:
+      - name: k8s-go-demo
+        image: pengbotao/k8s-go-demo
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 38001
+</code></pre>
+
+<hr />
+
+<ul>
+<li>[1] <a href="https://www.cnblogs.com/kcxg/p/11119679.html">k8s调度器kube-scheduler</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-10.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-10.html">2020-10-30 17:46</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/k8s-ingress.html">Kubernetes基础 ( 7 ) - Ingress</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/k8s-example.html">Kubernetes基础 ( 9 ) - 示例</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 8 ) - 调度器.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 8 ) - 调度器.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

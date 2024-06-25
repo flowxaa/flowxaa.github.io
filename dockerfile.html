@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Docker ( 2 ) - Dockerfile</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Docker ( 2 ) - Dockerfile</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-dockerfile">一、Dockerfile</a>
+<ul>
+<li><a href="#1-1-概述">1.1 概述</a></li>
+<li><a href="#1-2-构建方法">1.2 构建方法</a></li>
+<li><a href="#1-3-文件格式">1.3 文件格式</a></li>
+<li><a href="#1-4-指令集合">1.4 指令集合</a></li>
+</ul></li>
+<li><a href="#二-指令详解">二、指令详解</a></li>
+<li><a href="#三-dockerfiles最佳实践">三、Dockerfiles最佳实践</a>
+<ul>
+<li><a href="#3-1-多阶段构建">3.1 多阶段构建</a></li>
+<li><a href="#3-2-通过-dockerignore忽略无关文件">3.2 通过.dockerignore忽略无关文件</a></li>
+<li><a href="#3-3-减少镜像层数">3.3 减少镜像层数</a></li>
+<li><a href="#3-4-清理无用数据">3.4 清理无用数据</a></li>
+</ul></li>
+<li><a href="#四-构建示例">四、构建示例</a>
+<ul>
+<li><a href="#4-1-php5-6">4.1 php5.6</a></li>
+<li><a href="#4-2-php7-4-8">4.2 php7.4.8</a></li>
+<li><a href="#4-3-k8s-go-demo">4.3 k8s-go-demo</a></li>
+</ul></li>
+<li><a href="#五-构建调试">五、构建调试</a></li>
+<li><a href="#六-私有镜像仓库">六、私有镜像仓库</a>
+<ul>
+<li><a href="#6-1-通过registry镜像搭建">6.1 通过registry镜像搭建</a></li>
+<li><a href="#6-2-通过harbor搭建">6.2 通过harbor搭建</a></li>
+</ul></li>
+<li><a href="#七-小结">七、小结</a></li>
+</ul>
+</nav>
+
+<h1 id="一-dockerfile">一、Dockerfile</h1>
+
+<h2 id="1-1-概述">1.1 概述</h2>
+
+<p><code>Docker</code>通过读取<code>Dockerfile</code>中的指令来自动构建镜像，<code>Dockerfile</code>是一个文本文件（可以方便做版本管理），它包含了构建镜像的所有命令。可以通过<code>docker build</code>读取<code>Dockerfile</code>文件来构建镜像。<code>docker build</code>提交构建镜像请求给<code>Docker</code>守护进程，同时会将当前目录递归传过去。所以最好是将<code>Dockerfile</code>和需要文件放到一个空目录，再在这个目录构建。</p>
+
+<h2 id="1-2-构建方法">1.2 构建方法</h2>
+
+<ul>
+<li><p>常规构建:</p>
+
+<pre><code>$ docker build -t pengbotao/itopic.go .
+</code></pre></li>
+
+<li><p>指定<code>Dockerfile</code>:</p>
+
+<pre><code>$ docker build -f /path/to/a/Dockerfile .
+</code></pre></li>
+
+<li><p>标记为多个镜像：</p>
+
+<pre><code>$ docker build -t shykes/myapp:1.0.2 -t shykes/myapp:latest .
+</code></pre></li>
+
+<li><p>给镜像打别名</p></li>
+</ul>
+
+<pre><code>$ docker tag pengbotao/php:7.4.8-fpm-alpine 127.0.0.1:5000/php:7.4.8-fpm-alpine
+</code></pre>
+
+<h2 id="1-3-文件格式">1.3 文件格式</h2>
+
+<p>可以通过<code>Dockerfile</code>文件来定义构建过程，通过<code>.dockerignore</code>用来忽略文件，构建时不会将<code>ignore</code>的文件传给<code>Docker</code>服务端。</p>
+
+<p>1、 <strong><code>Dockerfile</code></strong>：</p>
+
+<pre><code># Comment
+INSTRUCTION arguments
+</code></pre>
+
+<p><code>INSTRUCTION</code>不区分大小写，建议大写。<code>Dockerfile</code>中的指令第一个指令必需是<code>FROM</code>用来指定基础镜像。<code>#</code>用来注释。</p>
+
+<p>2、 <strong><code>.dockerignore</code></strong>:</p>
+
+<pre><code># comment
+*/temp*
+*/*/temp*
+temp?
+</code></pre>
+
+<p>此文件导致以下构建行为：</p>
+
+<table>
+<thead>
+<tr>
+<th>规则</th>
+<th>行为</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td><code>#</code> comment</td>
+<td>忽略</td>
+</tr>
+
+<tr>
+<td><code>*/temp*</code></td>
+<td>不包含子目录中<code>temp</code>打头的文件和目录。如：文件 <code>/somedir/temporary.txt</code>，目录 <code>/somedir/temp</code></td>
+</tr>
+
+<tr>
+<td><code>*/*/temp*</code></td>
+<td>不包含子目录下的子目录中<code>temp</code>打头的文件和目录。 如：<code>/somedir/subdir/temporary.txt</code></td>
+</tr>
+
+<tr>
+<td><code>temp?</code></td>
+<td>不包含根目录中<code>temp</code>打头的文件和目录。 如：<code>/tempa</code> 和 <code>/tempb</code></td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="1-4-指令集合">1.4 指令集合</h2>
+
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>指令</th>
+<th>参数</th>
+<th>必须</th>
+<th>示例</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>1</td>
+<td>FROM</td>
+<td><code>FROM [--platform=&lt;platform&gt;] &lt;image&gt; [AS &lt;name&gt;]</code> <BR> <code>FROM [--platform=&lt;platform&gt;] &lt;image&gt;[:&lt;tag&gt;] [AS &lt;name&gt;]</code> <BR> <code>FROM [--platform=&lt;platform&gt;] &lt;image&gt;[@&lt;digest&gt;] [AS &lt;name&gt;]</code></td>
+<td>是</td>
+<td><code>FROM nginx</code></td>
+</tr>
+
+<tr>
+<td>2</td>
+<td>RUN</td>
+<td><code>RUN &lt;command&gt;</code> <BR> <code>RUN [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]</code></td>
+<td>否</td>
+<td><code>RUN [&quot;/bin/bash&quot;, &quot;-c&quot;, &quot;echo hello&quot;]</code></td>
+</tr>
+
+<tr>
+<td>3</td>
+<td>CMD</td>
+<td><code>CMD [&quot;executable&quot;,&quot;param1&quot;,&quot;param2&quot;]</code> <BR> <code>CMD [&quot;param1&quot;,&quot;param2&quot;]</code> <BR> <code>CMD command param1 param2</code></td>
+<td>否</td>
+<td><code>CMD [&quot;/usr/bin/wc&quot;,&quot;--help&quot;]</code></td>
+</tr>
+
+<tr>
+<td>4</td>
+<td>LABEL</td>
+<td><code>LABEL &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; ...</code></td>
+<td>否</td>
+<td><code>LABEL version=&quot;1.0&quot;</code></td>
+</tr>
+
+<tr>
+<td>5</td>
+<td>EXPOSE</td>
+<td><code>EXPOSE &lt;port&gt; [&lt;port&gt;/&lt;protocol&gt;...]</code></td>
+<td>否</td>
+<td><code>EXPOSE 80/tcp</code></td>
+</tr>
+
+<tr>
+<td>6</td>
+<td>ENV</td>
+<td><code>ENV &lt;key&gt; &lt;value&gt;</code> <BR> <code>ENV &lt;key&gt;=&lt;value&gt; ...</code></td>
+<td>否</td>
+<td><code>ENV myCat fluffy</code></td>
+</tr>
+
+<tr>
+<td>7</td>
+<td>ADD</td>
+<td><code>ADD [--chown=&lt;user&gt;:&lt;group&gt;] &lt;src&gt;... &lt;dest&gt;</code> <BR> <code>ADD [--chown=&lt;user&gt;:&lt;group&gt;] [&quot;&lt;src&gt;&quot;,... &quot;&lt;dest&gt;&quot;]</code></td>
+<td>否</td>
+<td><code>ADD hom?.txt /mydir/</code></td>
+</tr>
+
+<tr>
+<td>8</td>
+<td>COPY</td>
+<td><code>COPY [--chown=&lt;user&gt;:&lt;group&gt;] &lt;src&gt;... &lt;dest&gt;</code> <BR> <code>COPY [--chown=&lt;user&gt;:&lt;group&gt;] [&quot;&lt;src&gt;&quot;,... &quot;&lt;dest&gt;&quot;]</code></td>
+<td>否</td>
+<td><code>COPY hom?.txt /mydir/</code></td>
+</tr>
+
+<tr>
+<td>9</td>
+<td>ENTRYPOINT</td>
+<td><code>ENTRYPOINT [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]</code> <BR> <code>ENTRYPOINT command param1 param2</code></td>
+<td>否</td>
+<td><code>ENTRYPOINT [&quot;top&quot;, &quot;-b&quot;]</code></td>
+</tr>
+
+<tr>
+<td>10</td>
+<td>VOLUME</td>
+<td><code>VOLUME [&quot;/data&quot;]</code></td>
+<td>否</td>
+<td><code>VOLUME /var/log</code> <BR> <code>VOLUME [&quot;/var/log&quot;]</code></td>
+</tr>
+
+<tr>
+<td>11</td>
+<td>USER</td>
+<td><code>USER &lt;user&gt;[:&lt;group&gt;]</code> <BR> <code>USER &lt;UID&gt;[:&lt;GID&gt;]</code></td>
+<td>否</td>
+<td><code>USER patrick</code></td>
+</tr>
+
+<tr>
+<td>12</td>
+<td>WORKDIR</td>
+<td><code>WORKDIR /path/to/workdir</code></td>
+<td>否</td>
+<td><code>WORKDIR /data</code></td>
+</tr>
+
+<tr>
+<td>13</td>
+<td>ARG</td>
+<td><code>ARG &lt;name&gt;[=&lt;default value&gt;]</code></td>
+<td>否</td>
+<td><code>ARG user1=someuser</code></td>
+</tr>
+
+<tr>
+<td>14</td>
+<td>ONBUILD</td>
+<td><code>ONBUILD &lt;INSTRUCTION&gt;</code></td>
+<td>否</td>
+<td><code>ONBUILD ADD . /app/src</code></td>
+</tr>
+
+<tr>
+<td>15</td>
+<td>STOPSIGNAL</td>
+<td><code>STOPSIGNAL signal</code></td>
+<td>否</td>
+<td></td>
+</tr>
+
+<tr>
+<td>16</td>
+<td>HEALTHCHECK</td>
+<td><code>HEALTHCHECK [OPTIONS] CMD command</code> <BR> <code>HEALTHCHECK NONE</code></td>
+<td>否</td>
+<td></td>
+</tr>
+
+<tr>
+<td>17</td>
+<td>SHELL</td>
+<td><code>SHELL [&quot;executable&quot;, &quot;parameters&quot;]</code></td>
+<td>否</td>
+<td><code>SHELL [&quot;powershell&quot;, &quot;-command&quot;]</code></td>
+</tr>
+</tbody>
+</table>
+
+<h1 id="二-指令详解">二、指令详解</h1>
+
+<p>@todo</p>
+
+<h1 id="三-dockerfiles最佳实践">三、Dockerfiles最佳实践</h1>
+
+<h2 id="3-1-多阶段构建">3.1 多阶段构建</h2>
+
+<p>前一篇文章中构建的镜像大小有901M，<code>Go</code>的基础镜像就比较大。可以尝试将编译后的二进制放在新的容器中执行，解除对<code>golang</code>环境的依赖。</p>
+
+<pre><code>REPOSITORY            TAG        IMAGE ID       CREATED             SIZE
+pengbotao/itopic.go   latest     36e405364fd8   25 hours ago        901MB
+</code></pre>
+
+<p>如，将编译后的<code>itopic</code>拷贝到<code>alpine</code>系统中，在看大小就只有<code>27M</code>了。</p>
+
+<pre><code>FROM golang:1.14 AS build
+
+COPY . /go/src/github.com/pengbotao/itopic.go/
+RUN cd /go/src/github.com/pengbotao/itopic.go/ \
+&amp;&amp; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o itopic
+
+
+FROM alpine
+COPY --from=build /go/src/github.com/pengbotao/itopic.go/ /www/itopic.go/
+EXPOSE 8001
+WORKDIR /www/itopic.go
+CMD [ &quot;-host&quot;, &quot;0.0.0.0:8001&quot; ]
+ENTRYPOINT [ &quot;/www/itopic.go/itopic&quot; ]
+</code></pre>
+
+<h2 id="3-2-通过-dockerignore忽略无关文件">3.2 通过.dockerignore忽略无关文件</h2>
+
+<p>构建时会将该指定目录传到<code>Docker</code>守护进程，所以一般建议在空目录或者只包含需要的文件，对于项目中不需要的文件可以通过<code>.dockerignore</code>文件忽略。</p>
+
+<h2 id="3-3-减少镜像层数">3.3 减少镜像层数</h2>
+
+<p><strong>a. 镜像与层</strong></p>
+
+<p>Docker镜像由一系列层组成。每层代表Dockerfile中的一条指令。除最后一层外的每一层都是只读的。看以下Dockerfile：</p>
+
+<pre><code>FROM ubuntu:18.04
+COPY . /app
+RUN make /app
+CMD python /app/app.py
+</code></pre>
+
+<p>包含了4条指令，每个命令会创建一层，<code>FROM</code>语句首先从<code>ubuntu:18.04</code>镜像创建一层。然后<code>COPY</code>命令从当前目录拷贝一些文件。<code>RUN</code>命令执行<code>make</code>操作，最后一层指定在容器中运行的命令。每个层仅包含了前一层的差异部分。 当我们启动一个容器的时候，<code>Docker</code>会加载镜像层并在其上添加一个可写层。容器上所做的任何更改，譬如新建文件、更改文件、删除文件，都将记录与可写层上。容器层与镜像层的结构如下图所示。</p>
+
+<p><img src="../../static/uploads/container-layers.jpg" alt="" /></p>
+
+<p><strong>b. 容器与层</strong></p>
+
+<p>容器和镜像之间的主要区别是最顶层的可写层。在容器中所有写操作都存储在可写层中。删除容器后，可写层也会被删除，基础镜像保持不变。因为每个容器都有自己的可写容器层，并且所有更改都存储在该容器层中，所以多个容器可以共享对同一基础镜像。下图显示了共享相同Ubuntu 18.04镜像的多个容器。</p>
+
+<p><img src="../../static/uploads/sharing-layers.jpg" alt="" /></p>
+
+<h2 id="3-4-清理无用数据">3.4 清理无用数据</h2>
+
+<p>通常为命令执行过程中的一些缓存或者中间数据，可以随镜像创建完成时执行删除操作。</p>
+
+<h1 id="四-构建示例">四、构建示例</h1>
+
+<h2 id="4-1-php5-6">4.1 php5.6</h2>
+
+<pre><code>docker build -t pengbotao/php:5.6-fpm-alpine .
+</code></pre>
+
+<p>安装了常用PHP扩展：<code>redis</code> <code>gd</code> <code>bcmath</code> <code>bz2</code> <code>pdo_mysql</code> <code>mysqli</code> <code>opcache</code> <code>sockets</code> <code>pcntl</code> <code>xsl</code> <code>soap</code> <code>dom</code> <code>shmop</code> <code>zip</code> <code>mcrypt</code></p>
+
+<pre><code>FROM php:5.6-fpm-alpine
+
+WORKDIR &quot;/data/www&quot;
+
+RUN  sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+&amp;&amp; apk update \
+&amp;&amp; apk add autoconf libmcrypt-dev bzip2-dev libxslt-dev freetype-dev libjpeg-turbo-dev libpng-dev zlib-dev libzip-dev\
+&amp;&amp; docker-php-ext-install bcmath bz2 pdo_mysql mysqli opcache sockets pcntl xsl soap dom shmop zip mcrypt\
+&amp;&amp; docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ --with-png-dir=/usr/include/ \
+&amp;&amp; docker-php-ext-install gd \
+&amp;&amp; mkdir -p /usr/src/php/ext/redis \
+&amp;&amp; curl -L https://github.com/phpredis/phpredis/archive/3.1.6.tar.gz | tar xvz -C /usr/src/php/ext/redis --strip 1 \
+&amp;&amp; docker-php-ext-install redis \
+&amp;&amp; docker-php-ext-enable redis 
+
+CMD [ &quot;php-fpm&quot; ]
+</code></pre>
+
+<p>推送到Docker Hub</p>
+
+<pre><code>docker push pengbotao/php:5.6-fpm-alpine
+</code></pre>
+
+<h2 id="4-2-php7-4-8">4.2 php7.4.8</h2>
+
+<pre><code>docker build -t pengbotao/php:7.4.8-fpm-alpine .
+</code></pre>
+
+<p>和上面类似，通过<code>PECL</code>安装了<code>Redis</code>扩展（<a href="http://pecl.php.net/package/redis）">http://pecl.php.net/package/redis）</a></p>
+
+<pre><code>FROM php:7.4.8-fpm-alpine
+
+WORKDIR &quot;/data/www&quot;
+
+RUN  sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+&amp;&amp; apk update \
+&amp;&amp; apk add build-base autoconf libmcrypt-dev bzip2-dev libxslt-dev freetype-dev libjpeg-turbo-dev libpng-dev zlib-dev libzip-dev\
+&amp;&amp; docker-php-ext-install bcmath bz2 pdo_mysql mysqli opcache sockets pcntl xsl soap dom shmop zip \
+&amp;&amp; docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
+&amp;&amp; docker-php-ext-install gd \
+&amp;&amp; pecl install redis-5.3.1 \
+&amp;&amp; docker-php-ext-enable redis \
+&amp;&amp; apk del build-base 
+
+CMD [ &quot;php-fpm&quot; ]
+</code></pre>
+
+<p>推送到<code>Docker Hub</code></p>
+
+<pre><code>docker push pengbotao/php:7.4.8-fpm-alpine
+</code></pre>
+
+<h2 id="4-3-k8s-go-demo">4.3 k8s-go-demo</h2>
+
+<p>测试过程中可能会碰到多版本的需要，这里通过<code>go</code>打一个多版本的镜像，方便做功能演示。可以打印当前版本号、时间、请求IP这几个信息。仓库地址：<code>https://github.com/pengbotao/k8s-go-demo</code>。</p>
+
+<p><strong><code>Dockerfile</code>:</strong></p>
+
+<pre><code>FROM golang:1.14 AS build
+
+WORKDIR /go
+
+COPY . /go/k8s-go-demo/
+RUN cd /go/k8s-go-demo/ \
+&amp;&amp; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o k8s-go-demo .
+
+
+FROM alpine
+COPY --from=build /go/k8s-go-demo/k8s-go-demo /bin/
+EXPOSE 38001
+
+CMD [ &quot;-host&quot;, &quot;0.0.0.0:38001&quot; ]
+ENTRYPOINT [ &quot;k8s-go-demo&quot; ]
+</code></pre>
+
+<p><strong>创建镜像：</strong></p>
+
+<pre><code>$ docker build -t pengbotao/k8s-go-demo:latest .
+$ docker build -t pengbotao/k8s-go-demo:v1 .
+$ docker build -t pengbotao/k8s-go-demo:v2 .
+$ docker build -t pengbotao/k8s-go-demo:v3 .
+</code></pre>
+
+<p><strong>推送：</strong></p>
+
+<pre><code>$ docker push pengbotao/k8s-go-demo
+$ docker push pengbotao/k8s-go-demo:v1
+$ docker push pengbotao/k8s-go-demo:v2
+$ docker push pengbotao/k8s-go-demo:v3
+</code></pre>
+
+<p><strong>启动：</strong></p>
+
+<pre><code>docker run -p 38001:38001 --name k8s-go-demo pengbotao/k8s-go-demo
+docker run -p 38002:38002 --name k8s-go-demo-v1 pengbotao/k8s-go-demo:v1 -host 0.0.0.0:38002
+</code></pre>
+
+<p><strong>访问示例：</strong></p>
+
+<pre><code>{
+    &quot;ClientIP&quot;: &quot;172.17.0.1&quot;,
+    &quot;Host&quot;: &quot;3acd87ae93db&quot;,
+    &quot;ServerIP&quot;: &quot;172.17.0.3&quot;,
+    &quot;Time&quot;: &quot;2020-09-08 05:32:25&quot;,
+    &quot;Version&quot;: &quot;latest&quot;
+}
+</code></pre>
+
+<h1 id="五-构建调试">五、构建调试</h1>
+
+<p>通过<code>RUN</code>可以在容器内的系统执行一些命令，但因为并非在容器内直接执行，调试上可能会打一些折扣，所以可以先在容器中跑一跑命令看看，跑通在整理到<code>Dockerfile</code>中，如果<code>Dockerfile</code>构建时失败了，我们可以用<code>docker run</code>命令来基于这次构建到目前为止已经成功的最后创建的一个容器，比如下面示例：</p>
+
+<p><strong>Dockerfile</strong></p>
+
+<pre><code>FROM php:7.4.8-fpm-alpine
+RUN  sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories 
+RUN docker-php-ext-install redis
+</code></pre>
+
+<p>无法通过<code>docker-php-ext-install redis</code>来安装<code>redis</code>扩展，所以可以看到到第三步时报错了。</p>
+
+<pre><code>$ docker build -t test1 .
+Sending build context to Docker daemon  9.216kB
+Step 1/3 : FROM php:7.4.8-fpm-alpine
+ ---&gt; c8aada1d51a4
+Step 2/3 : RUN  sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+ ---&gt; Using cache
+ ---&gt; e101c0717b4f
+Step 3/3 : RUN docker-php-ext-install redis
+ ---&gt; Running in 3455205e4c52
+error: /usr/src/php/ext/redis does not exist
+
+...
+
+Some of the above modules are already compiled into PHP; please check
+the output of &quot;php -i&quot; to see which modules are already loaded.
+The command '/bin/sh -c docker-php-ext-install redis' returned a non-zero code: 1
+</code></pre>
+
+<p>这是我们可以进入第二步创建成功的容器，然后运行并进入该容器(我这里是alpine所以进入后终端用的是<code>/bin/sh</code>)，然后直接在容器内做进一步调试，运行成功后就可以调整<code>Dockerfile</code>重新尝试构建</p>
+
+<pre><code>$ docker run -it e101c0717b4f /bin/sh
+/var/www/html # more /etc/apk/repositories
+http://mirrors.aliyun.com/alpine/v3.12/main
+http://mirrors.aliyun.com/alpine/v3.12/community
+</code></pre>
+
+<p>也可以指定容器名字</p>
+
+<pre><code>$ docker run -it --name test e101c0717b4f /bin/sh
+</code></pre>
+
+<h1 id="六-私有镜像仓库">六、私有镜像仓库</h1>
+
+<h2 id="6-1-通过registry镜像搭建">6.1 通过registry镜像搭建</h2>
+
+<p>通过Docker的镜像很容易创建自己的镜像仓库。</p>
+
+<p>1、安装。这里直接用官方的<code>registry</code>镜像来构建仓库，安装和启动方式和前面类似：</p>
+
+<pre><code>$ docker pull registry
+$ docker run -d -v ~/docker/registry:/var/lib/registry -p 5000:5000 --restart=always --name registry registry:latest
+d18931b1bd1b4b3ce7fe151c6f241c4dd1eebbfab8287dfed422ab5427a7f6a6
+</code></pre>
+
+<p>会启动<code>5000</code>端口，这里本机测试就不绑<code>host</code>了，也可以绑个<code>host</code>。</p>
+
+<p>2、打TAG</p>
+
+<pre><code>$ docker tag pengbotao/php:7.4.8-fpm-alpine 127.0.0.1:5000/php:7.4.8-fpm-alpine
+</code></pre>
+
+<p><code>docker tag</code>类似别名的操作，推送到远程仓库需要类似这样子的格式，<code>仓库/镜像名称:版本号</code>，当然仓库默认是官方仓库，版本号是<code>latest</code>。</p>
+
+<p>3、推送镜像</p>
+
+<pre><code>$ docker push 127.0.0.1:5000/php:7.4.8-fpm-alpine
+The push refers to repository [127.0.0.1:5000/php]
+9c8d79537668: Pushed
+106be351bd42: Pushed
+7d85ada8d1c7: Pushed
+767b1a2e8377: Pushed
+9c55f034ee50: Pushed
+6d3a6e58ccca: Pushed
+fc5c686c158f: Pushed
+d274b3a9c362: Pushed
+81c338ff74a3: Pushed
+308ef7bef157: Pushed
+d94df04fea90: Pushed
+50644c29ef5a: Pushed
+7.4.8-fpm-alpine: digest: sha256:364931dd4bf7c5b159f93b458ab64bc3914218452c82d06d9359f82e3476c9bc size: 2830
+</code></pre>
+
+<p>4、查看镜像</p>
+
+<pre><code># 查看镜像
+$ curl http://127.0.0.1:5000/v2/_catalog
+{&quot;repositories&quot;:[&quot;php&quot;]}
+
+# 查看镜像tags列表
+$ curl http://127.0.0.1:5000/v2/php/tags/list
+{&quot;name&quot;:&quot;php&quot;,&quot;tags&quot;:[&quot;7.4.8-fpm-alpine&quot;]}
+</code></pre>
+
+<p>也可以在<code>~/docker/registry/docker/registry/v2/repositories/</code>中查看仓库里的镜像信息。</p>
+
+<p>5、镜像拉取(尝试删除后再从镜像仓库拉取)</p>
+
+<pre><code>$ docker rmi 127.0.0.1:5000/php:7.4.8-fpm-alpine
+Untagged: 127.0.0.1:5000/php:7.4.8-fpm-alpine
+Untagged: 127.0.0.1:5000/php@sha256:364931dd4bf7c5b159f93b458ab64bc3914218452c82d06d9359f82e3476c9bc
+
+$ docker pull 127.0.0.1:5000/php:7.4.8-fpm-alpine
+7.4.8-fpm-alpine: Pulling from php
+Digest: sha256:364931dd4bf7c5b159f93b458ab64bc3914218452c82d06d9359f82e3476c9bc
+Status: Downloaded newer image for 127.0.0.1:5000/php:7.4.8-fpm-alpine
+127.0.0.1:5000/php:7.4.8-fpm-alpine
+</code></pre>
+
+<h2 id="6-2-通过harbor搭建">6.2 通过harbor搭建</h2>
+
+<p>下载地址：<code>https://github.com/goharbor/harbor/releases</code></p>
+
+<h1 id="七-小结">七、小结</h1>
+
+<p>借助<code>Dockerfile</code>和官方的基础镜像，基本可以编译出需要的环境，<code>Dockerfile</code>里的<code>RUN</code>命令和往常没有太大区别，但对比虚拟机或者<code>ECS</code>，好处是配置一次之后便可以以文本的方式存储起来或者将镜像推送到镜像仓库，轻量很多，后续配起来比较方便。到这里我们创建了3个镜像，有需要可以直接使用：</p>
+
+<p><img src="../../static/uploads/docker-my-images.png" alt="" /></p>
+
+<p>这一篇主要介绍了<code>Dockerfile</code>创建镜像，到这里我们就基本掌握了<code>Docker</code>的基本使用以及镜像的构建、推送。但像<code>PHP</code>的运行环境需要服务同时协作，按目前的理解就需要一个服务一个服务进行启动，启停上比较麻烦。而<code>docker-compose</code>基本可以解决开发环境下的这个问题，将各个容器打包启动。</p>
+
+<p>下篇来看看<code>docker-compose</code>的用法。</p>
+
+<hr />
+
+<ul>
+<li>[1] <a href="https://docs.docker.com/engine/reference/builder/">Dockerfile reference</a></li>
+<li>[2] <a href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/">Best practices for writing Dockerfiles</a></li>
+<li>[3] <a href="http://www.dockerone.com/article/9551">Dockerfile 最佳实践及示例</a></li>
+<li>[4] <a href="https://docs.docker.com/storage/storagedriver/">About storage drivers</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-06.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-06.html">2020-06-30 14:08</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/docker.html">Docker</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/docker-start.html">Docker ( 1 ) - 小试Docker容器环境</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/docker-compose.html">Docker ( 3 ) - Docker Compose</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Docker ( 2 ) - Dockerfile.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Docker ( 2 ) - Dockerfile.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>全文搜索引擎 - Elasticsearch</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">全文搜索引擎 - Elasticsearch</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a></li>
+<li><a href="#二-安装">二、安装</a>
+<ul>
+<li><a href="#2-1-安装jdk">2.1 安装jdk</a></li>
+<li><a href="#2-2-安装elasticsearch">2.2 安装Elasticsearch</a></li>
+<li><a href="#2-3-启动elasticsearch">2.3 启动Elasticsearch</a></li>
+<li><a href="#2-4-配置文件">2.4 配置文件</a></li>
+</ul></li>
+<li><a href="#三-基本概念">三、基本概念</a>
+<ul>
+<li><a href="#3-1-索引-index">3.1 索引（Index）</a></li>
+<li><a href="#3-2-类型-type">3.2 类型（Type）</a></li>
+<li><a href="#3-3-文档-document">3.3 文档（Document）</a></li>
+</ul></li>
+<li><a href="#四-中文分词">四、中文分词</a>
+<ul>
+<li><a href="#4-1-安装ik中文分词">4.1 安装ik中文分词</a></li>
+<li><a href="#4-2-ik分析器">4.2 ik分析器</a></li>
+</ul></li>
+<li><a href="#五-索引定义">五、索引定义</a>
+<ul>
+<li><a href="#5-1-索引类型">5.1 索引类型</a>
+<ul>
+<li><a href="#5-1-1-keyword">5.1.1 Keyword</a></li>
+<li><a href="#5-1-2-text">5.1.2 Text</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#六-查询语句">六、查询语句</a>
+<ul>
+<li><a href="#6-1-查询列表">6.1 查询列表</a></li>
+<li><a href="#6-2-精确查询-term">6.2 精确查询 - Term</a></li>
+<li><a href="#6-3-全文查询-match">6.3 全文查询 - Match</a></li>
+<li><a href="#6-4-范围查询">6.4 范围查询</a></li>
+<li><a href="#6-5-复合查询">6.5 复合查询</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<p>Elasticsearch是一个基于Lucene的搜索服务器。它提供了一个分布式多用户能力的全文搜索引擎，基于RESTful web接口。Elasticsearch是用Java语言开发的，并作为Apache许可条款下的开放源码发布，是一种流行的企业级搜索引擎。Elasticsearch用于云计算中，能够达到实时搜索，稳定，可靠，快速，安装使用方便。官方客户端在Java、.NET（C#）、PHP、Python、Apache Groovy、Ruby和许多其他语言中都是可用的。根据DB-Engines的排名显示，Elasticsearch是最受欢迎的企业搜索引擎，其次是Apache Solr，也是基于Lucene。</p>
+
+<blockquote>
+<p>当前文档使用Elasticsearch版本：6.8.12</p>
+</blockquote>
+
+<h1 id="二-安装">二、安装</h1>
+
+<p>Elasticsearch使用Java开发，需要配置JDK环境。</p>
+
+<h2 id="2-1-安装jdk">2.1 安装jdk</h2>
+
+<p><strong>1. 下载安装包</strong></p>
+
+<p><a href="https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html">https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html</a></p>
+
+<p><strong>2. 解压缩以及配置环境变量</strong></p>
+
+<pre><code>$ tar -zxvf jdk-8u271-linux-x64.tar.gz -C /usr/local/
+
+$ vi /etc/profile
+JAVA_HOME=/usr/local/jdk1.8.0_271/
+PATH=$PATH:$JAVA_HOME/bin
+CLASSPATH=$JAVA_HOME/jre/lib/ext:$JAVA_HOME/lib/tools.jar
+export PATH JAVA_HOME CLASSPATH
+</code></pre>
+
+<p><strong>3. 刷新环境变量</strong></p>
+
+<pre><code>$ source /etc/profile
+</code></pre>
+
+<p><strong>4. 测试</strong></p>
+
+<pre><code>$ java -version
+java version &quot;1.8.0_271&quot;
+Java(TM) SE Runtime Environment (build 1.8.0_271-b09)
+Java HotSpot(TM) 64-Bit Server VM (build 25.271-b09, mixed mode)
+</code></pre>
+
+<h2 id="2-2-安装elasticsearch">2.2 安装Elasticsearch</h2>
+
+<p><code>Elasticsearch</code>的安装比较简单，下载对应的包直接运行即可。</p>
+
+<p><strong>1. 下载安装包</strong></p>
+
+<p><a href="https://www.elastic.co/cn/downloads/past-releases#elasticsearch">https://www.elastic.co/cn/downloads/past-releases#elasticsearch</a></p>
+
+<p><strong>2. 解压缩</strong></p>
+
+<pre><code>$ tar -zxvf elasticsearch-6.8.12.tar.gz -C /usr/local/
+</code></pre>
+
+<h2 id="2-3-启动elasticsearch">2.3 启动Elasticsearch</h2>
+
+<p>直接使用如下命令即可启动：</p>
+
+<pre><code>$ /usr/local/elasticsearch-6.8.12/bin/elasticsearch
+</code></pre>
+
+<p>但可能出现以下情况：</p>
+
+<ul>
+<li>[1]: max file descriptors [65535] for elasticsearch process is too low, increase to at least [65536]</li>
+<li>[2]: max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]</li>
+<li>[3]: max number of threads [1024] for user [es] is too low, increase to at least [4096]</li>
+<li>[4]: java.lang.RuntimeException: can not run elasticsearch as root</li>
+</ul>
+
+<p><strong>1. 调整文件句柄数</strong></p>
+
+<pre><code>$ vi /etc/security/limits.conf
+* soft nofile 65536
+* hard nofile 65536
+
+$ ulimit -Hn
+65536
+</code></pre>
+
+<p><strong>2. vm.max_map_count</strong></p>
+
+<pre><code>$ vi /etc/sysctl.conf
+vm.max_map_count=655360
+$ sysctl -p
+</code></pre>
+
+<p><strong>3. 线程数</strong></p>
+
+<pre><code>$ vi /etc/security/limits.d/90-nproc.conf
+$ cat /etc/security/limits.d/90-nproc.conf
+# Default limit for number of user's processes to prevent
+# accidental fork bombs.
+# See rhbz #432903 for reasoning.
+
+*          soft    nproc     102400
+root       soft    nproc     unlimited
+</code></pre>
+
+<p><strong>4. 切换账户</strong></p>
+
+<p>提示不能以<code>root</code>用户启动，需切换到其他用户，放后台执行可以通过<code>-d</code>参数：</p>
+
+<pre><code>$ /usr/local/elasticsearch-6.8.12/bin/elasticsearch -d
+</code></pre>
+
+<p><code>Elasticsearch</code>以HTTP的方式提供服务，后续的操作也都是以HTTP请求方式交互，先来测试服务是否启动成功：</p>
+
+<pre><code>$ curl 127.0.0.1:9200
+{
+  &quot;name&quot; : &quot;Vxhzj3I&quot;,
+  &quot;cluster_name&quot; : &quot;elasticsearch&quot;,
+  &quot;cluster_uuid&quot; : &quot;cBmW_29HRTCIRMj9YGCSeA&quot;,
+  &quot;version&quot; : {
+    &quot;number&quot; : &quot;6.8.12&quot;,
+    &quot;build_flavor&quot; : &quot;default&quot;,
+    &quot;build_type&quot; : &quot;tar&quot;,
+    &quot;build_hash&quot; : &quot;be13c69&quot;,
+    &quot;build_date&quot; : &quot;2020-10-16T09:09:46.555371Z&quot;,
+    &quot;build_snapshot&quot; : false,
+    &quot;lucene_version&quot; : &quot;7.7.3&quot;,
+    &quot;minimum_wire_compatibility_version&quot; : &quot;5.6.0&quot;,
+    &quot;minimum_index_compatibility_version&quot; : &quot;5.0.0&quot;
+  },
+  &quot;tagline&quot; : &quot;You Know, for Search&quot;
+}
+</code></pre>
+
+<p>停止服务：</p>
+
+<pre><code>$ kill -SIGTERM pid
+</code></pre>
+
+<h2 id="2-4-配置文件">2.4 配置文件</h2>
+
+<p>上面示例配置文件在：<code>/usr/local/elasticsearch-6.8.12/config/elasticsearch.yml</code></p>
+
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>cluster.name</td>
+<td>集群名称，默认是elasticsearch，同名称才能组成集群</td>
+<td></td>
+</tr>
+
+<tr>
+<td>node.name</td>
+<td>节点名称</td>
+<td></td>
+</tr>
+
+<tr>
+<td>node.master</td>
+<td>是否有资格为master，默认为true</td>
+<td></td>
+</tr>
+
+<tr>
+<td>node.data</td>
+<td>是否存储数据，默认为true</td>
+<td></td>
+</tr>
+
+<tr>
+<td>path.data</td>
+<td>数据目录，多个目录逗号分隔</td>
+<td></td>
+</tr>
+
+<tr>
+<td>path.logs</td>
+<td>日志目录</td>
+<td></td>
+</tr>
+
+<tr>
+<td>bootstrap.memory_lock</td>
+<td>锁定物理内存</td>
+<td></td>
+</tr>
+
+<tr>
+<td>network.host</td>
+<td>绑定主机</td>
+<td></td>
+</tr>
+
+<tr>
+<td>http.port</td>
+<td>绑定端口</td>
+<td></td>
+</tr>
+
+<tr>
+<td>http.enabled</td>
+<td>是否启用HTTP服务</td>
+<td>false</td>
+</tr>
+
+<tr>
+<td>discovery.zen.ping.unicast.hosts</td>
+<td>单播主机列表</td>
+<td><code>[&quot;host1&quot;, &quot;host2&quot;]</code></td>
+</tr>
+
+<tr>
+<td>discovery.zen.minimum_master_nodes</td>
+<td>要选举Master至少需要多少个节点同意，默认为1</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<p>比如，调整集群和节点名称后：</p>
+
+<pre><code>$ curl 127.0.0.1:9200
+{
+  &quot;name&quot; : &quot;es-demo-node1&quot;,
+  &quot;cluster_name&quot; : &quot;es-demo&quot;,
+  &quot;cluster_uuid&quot; : &quot;cBmW_29HRTCIRMj9YGCSeA&quot;,
+  &quot;version&quot; : {
+    &quot;number&quot; : &quot;6.8.12&quot;,
+    &quot;build_flavor&quot; : &quot;default&quot;,
+    &quot;build_type&quot; : &quot;tar&quot;,
+    &quot;build_hash&quot; : &quot;be13c69&quot;,
+    &quot;build_date&quot; : &quot;2020-10-16T09:09:46.555371Z&quot;,
+    &quot;build_snapshot&quot; : false,
+    &quot;lucene_version&quot; : &quot;7.7.3&quot;,
+    &quot;minimum_wire_compatibility_version&quot; : &quot;5.6.0&quot;,
+    &quot;minimum_index_compatibility_version&quot; : &quot;5.0.0&quot;
+  },
+  &quot;tagline&quot; : &quot;You Know, for Search&quot;
+}
+</code></pre>
+
+<h1 id="三-基本概念">三、基本概念</h1>
+
+<h2 id="3-1-索引-index">3.1 索引（Index）</h2>
+
+<p>索引可以理解成索引库，是相同结构的文档数据的集合。</p>
+
+<p><strong>3.1.1 查看索引</strong></p>
+
+<pre><code>$ curl localhost:9200/_cat/indices?v
+health status index uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   area  8A9sotMOQN-UuirmEmOF9Q   5   1       3447            0      757kb          757kb
+
+$ curl localhost:9200/_cat/
+=^.^=
+/_cat/allocation
+/_cat/shards
+/_cat/shards/{index}
+/_cat/master
+/_cat/nodes
+/_cat/tasks
+/_cat/indices
+/_cat/indices/{index}
+...
+</code></pre>
+
+<p><strong>3.1.2 创建索引</strong></p>
+
+<p>创建名为<code>demo</code>的索引：</p>
+
+<pre><code>$ curl -X PUT -H &quot;Content-type: application/json&quot; 'http://localhost:9200/demo'
+{
+    &quot;acknowledged&quot;: true,
+    &quot;shards_acknowledged&quot;: true,
+    &quot;index&quot;: &quot;demo&quot;
+}
+</code></pre>
+
+<p><strong>创建<code>Index</code></strong>，同时指定<code>Type=_doc</code>，定义<code>mapping</code>：包含2个字段：<code>title</code>、<code>content</code>。</p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X PUT -H &quot;Content-type: application/json&quot; 'http://localhost:9200/demo?pretty' -d @- 
+{
+    &quot;mappings&quot;: {
+        &quot;_doc&quot;: {
+            &quot;properties&quot;: {
+                &quot;title&quot;: {
+                    &quot;type&quot; : &quot;keyword&quot;
+                },
+                &quot;content&quot;: {
+                    &quot;type&quot;: &quot;text&quot;
+                }
+            }
+        }
+    }
+}
+EOF
+
+{
+  &quot;acknowledged&quot; : true,
+  &quot;shards_acknowledged&quot; : true,
+  &quot;index&quot; : &quot;demo&quot;
+}
+</code></pre>
+
+<p><strong>3.1.3 删除索引</strong></p>
+
+<p><strong>删除<code>Index</code>：</strong></p>
+
+<pre><code>$ curl -X DELETE 'http://localhost:9200/demo'
+{
+    &quot;acknowledged&quot;: true
+}
+</code></pre>
+
+<h2 id="3-2-类型-type">3.2 类型（Type）</h2>
+
+<p>类型介于索引和文档之间，相当于对文档进行分组。一个索引库下有多个分组，每个分组下存储多个文档，就可以按Mysql的<code>库-表-记录</code>来理解了。类型包含类型名称和<code>mapping</code>，<code>mapping</code>用来定义字段的属性。</p>
+
+<p><code>Elasticsearch</code>6.x版本每个<code>Index</code>只允许包含一个<code>Type</code>（推荐名称是<code>_doc</code>），7.x版本将会彻底移除<code>Type</code>。在测试版本中提交不同<code>Type</code>的数据时会报错：</p>
+
+<pre><code>{
+    &quot;type&quot;: &quot;illegal_argument_exception&quot;,
+    &quot;reason&quot;: &quot;Rejecting mapping update to [demo] as the final mapping would have more than 1 type: [_doc, test]&quot;
+}
+</code></pre>
+
+<p><strong>3.2.1 读取mapping</strong></p>
+
+<p>列出<code>demo</code>索引下的<code>mapping</code>，由于目前只支持1对1，如果早期版本有多个<code>Type</code>，可以在索引后指定<code>Type</code>名称。</p>
+
+<pre><code>$ curl localhost:9200/demo/_mapping?pretty
+{
+  &quot;demo&quot; : {
+    &quot;mappings&quot; : {
+      &quot;_doc&quot; : {
+        &quot;properties&quot; : {
+          &quot;content&quot; : {
+            &quot;type&quot; : &quot;text&quot;
+          },
+          &quot;title&quot; : {
+            &quot;type&quot; : &quot;keyword&quot;
+          }
+        }
+      }
+    }
+  }
+}
+</code></pre>
+
+<p><strong>3.2.2 更新mapping</strong></p>
+
+<p><code>mapping</code>在创建索引时或者第一次提交数据时确定，创建后存在的字段将无法更改，但可以向已有的<code>mapping</code>里新增字段。</p>
+
+<pre><code>cat &lt;&lt; EOF | curl -X PUT -H &quot;Content-type: application/json&quot; 'http://localhost:9200/demo/_doc/_mapping?pretty' -d @- 
+{
+    &quot;properties&quot;: {
+        &quot;author&quot;: {
+            &quot;type&quot;: &quot;text&quot;
+        }
+    }
+}
+EOF
+
+{
+  &quot;acknowledged&quot; : true
+}
+</code></pre>
+
+<p><strong>3.2.3 索引迁移</strong></p>
+
+<p>前面说到已经提交的字段无法修改，但可以通过起个别名来迁移，分为5个步骤：</p>
+
+<p><strong>1. 给已有的索引起个别名</strong></p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X POST -H &quot;Content-type: application/json&quot; 'http://localhost:9200/_aliases?pretty' -d @-
+{
+    &quot;actions&quot;: [
+        { &quot;add&quot; : { &quot;index&quot; : &quot;demo&quot;, &quot;alias&quot; : &quot;test&quot; } }
+    ]
+}
+EOF
+
+{
+  &quot;acknowledged&quot; : true
+}
+</code></pre>
+
+<p><strong>2. 创建新的索引</strong></p>
+
+<p>这里指定使用ik分词，需要安装后面的<code>ik</code>分词插件。因为这是新建的，所以类型等字段就随自定义了。</p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X PUT -H &quot;Content-type: application/json&quot; 'http://localhost:9200/beta?pretty' -d @- 
+{
+    &quot;mappings&quot;: {
+        &quot;_doc&quot;: {
+            &quot;properties&quot;: {
+                &quot;title&quot;: {
+                    &quot;type&quot; : &quot;keyword&quot;,
+                    &quot;analyzer&quot;: &quot;ik_max_word&quot;,
+                    &quot;search_analyzer&quot;: &quot;ik_smart&quot;
+                },
+                &quot;content&quot;: {
+                    &quot;type&quot;: &quot;text&quot;,
+                    &quot;analyzer&quot;: &quot;ik_max_word&quot;,
+                    &quot;search_analyzer&quot;: &quot;ik_smart&quot;
+                }
+            }
+        }
+    }
+}
+EOF
+</code></pre>
+
+<p><strong>3. 重建新索引</strong></p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X POST -H &quot;Content-type: application/json&quot; 'http://localhost:9200/_reindex?pretty' -d @-
+{
+    &quot;source&quot;: {
+        &quot;index&quot;: &quot;demo&quot;
+    },
+    &quot;dest&quot;: {
+        &quot;index&quot;: &quot;beta&quot;
+    }
+}
+EOF
+
+{
+  &quot;took&quot; : 44,
+  &quot;timed_out&quot; : false,
+  &quot;total&quot; : 1,
+  &quot;updated&quot; : 0,
+  &quot;created&quot; : 1,
+  &quot;deleted&quot; : 0,
+  &quot;batches&quot; : 1,
+  &quot;version_conflicts&quot; : 0,
+  &quot;noops&quot; : 0,
+  &quot;retries&quot; : {
+    &quot;bulk&quot; : 0,
+    &quot;search&quot; : 0
+  },
+  &quot;throttled_millis&quot; : 0,
+  &quot;requests_per_second&quot; : -1.0,
+  &quot;throttled_until_millis&quot; : 0,
+  &quot;failures&quot; : [ ]
+}
+</code></pre>
+
+<p><strong>4. 将别名指向到新的索引</strong></p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X POST -H &quot;Content-type: application/json&quot; 'http://localhost:9200/_aliases?pretty' -d @-
+{
+    &quot;actions&quot;: [
+        { &quot;add&quot; : { &quot;index&quot; : &quot;beta&quot;, &quot;alias&quot; : &quot;test&quot; } }
+    ]
+}
+EOF
+
+{
+  &quot;acknowledged&quot; : true
+}
+</code></pre>
+
+<p><strong>5. 删除旧索引</strong></p>
+
+<p>一个别名可以关联多个索引，经过上一步后则别名关联了2个索引，删除旧的索引别名。</p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X POST -H &quot;Content-type: application/json&quot; 'http://localhost:9200/_aliases?pretty' -d @-
+{
+    &quot;actions&quot;: [
+        {&quot;remove&quot;: {&quot;index&quot;: &quot;demo&quot;, &quot;alias&quot;: &quot;test&quot;}}
+    ]
+}
+EOF
+
+{
+    &quot;acknowledged&quot;: true
+}
+</code></pre>
+
+<p>如果在定义索引之前没有设置别名，通过该方式代码端还是需要有一些调整，但如果有定义别名并使用别名，则只需做ES服务端的迁移即可。</p>
+
+<h2 id="3-3-文档-document">3.3 文档（Document）</h2>
+
+<p>类似<code>Mysql</code>的行数据，一行数据就是一个文档，数据格式通常使用<code>JSON</code>格式，同一个索引+类型下可以存储多个文档数据，可以通过接口操作文档数据。</p>
+
+<p><strong>3.3.1 添加数据</strong></p>
+
+<p>给<code>demo</code>索引下<code>Type</code>为<code>_doc</code>添加数据：</p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X POST -H &quot;Content-type: application/json&quot; 'http://localhost:9200/demo/_doc/10001?pretty' -d @-
+{
+    &quot;title&quot;: &quot;11月将发生这些大事！第一条就与你有关&quot;,
+    &quot;content&quot;: &quot;全国人口普查开始正式登记;养老机构将建立老年人健康档案&quot;
+}
+EOF
+
+{
+  &quot;_index&quot; : &quot;demo&quot;,
+  &quot;_type&quot; : &quot;_doc&quot;,
+  &quot;_id&quot; : &quot;10001&quot;,
+  &quot;_version&quot; : 1,
+  &quot;result&quot; : &quot;created&quot;,
+  &quot;_shards&quot; : {
+    &quot;total&quot; : 2,
+    &quot;successful&quot; : 1,
+    &quot;failed&quot; : 0
+  },
+  &quot;_seq_no&quot; : 0,
+  &quot;_primary_term&quot; : 1
+}
+</code></pre>
+
+<p>上面的地址为：<code>demo/_doc/10001</code>，10001为指定记录的ID，也可以不指定ID，ES会自己生成。</p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X POST -H &quot;Content-type: application/json&quot; 'http://localhost:9200/demo/_doc/?pretty' -d @-
+{
+    &quot;title&quot;: &quot;11月将发生这些大事！第一条就与你有关&quot;,
+    &quot;content&quot;: &quot;全国人口普查开始正式登记;养老机构将建立老年人健康档案&quot;
+}
+EOF
+
+{
+  &quot;_index&quot; : &quot;demo&quot;,
+  &quot;_type&quot; : &quot;_doc&quot;,
+  &quot;_id&quot; : &quot;yc_BeHUB5PnW6VuaGLjA&quot;,
+  &quot;_version&quot; : 1,
+  &quot;result&quot; : &quot;created&quot;,
+  &quot;_shards&quot; : {
+    &quot;total&quot; : 2,
+    &quot;successful&quot; : 1,
+    &quot;failed&quot; : 0
+  },
+  &quot;_seq_no&quot; : 1,
+  &quot;_primary_term&quot; : 1
+}
+</code></pre>
+
+<p><strong>3.3.2 获取数据</strong></p>
+
+<p>获取<code>Index=demo</code>, <code>Type=_doc</code>, <code>_id=10001</code>的记录。</p>
+
+<pre><code>$ curl 'http://localhost:9200/demo/_doc/10001?pretty'
+{
+  &quot;_index&quot; : &quot;demo&quot;,
+  &quot;_type&quot; : &quot;_doc&quot;,
+  &quot;_id&quot; : &quot;10001&quot;,
+  &quot;_version&quot; : 2,
+  &quot;_seq_no&quot; : 1,
+  &quot;_primary_term&quot; : 1,
+  &quot;found&quot; : true,
+  &quot;_source&quot; : {
+    &quot;title&quot; : &quot;11月将发生这些大事！第一条就与你有关&quot;,
+    &quot;content&quot; : &quot;全国人口普查开始正式登记;养老机构将建立老年人健康档案&quot;
+  }
+}
+</code></pre>
+
+<p><strong>3.3.3 更新数据</strong></p>
+
+<p>将前面数据指定ID再次提交即可，更新之后版本号变为了2.</p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -X POST -H &quot;Content-type: application/json&quot; 'http://localhost:9200/demo/_doc/10001?pretty' -d @-
+{
+    &quot;title&quot;: &quot;11月将发生这些大事！第一条就与你有关&quot;,
+    &quot;content&quot;: &quot;全国人口普查开始正式登记;养老机构将建立老年人健康档案&quot;
+}
+EOF
+
+{
+  &quot;_index&quot; : &quot;demo&quot;,
+  &quot;_type&quot; : &quot;_doc&quot;,
+  &quot;_id&quot; : &quot;10001&quot;,
+  &quot;_version&quot; : 2,
+  &quot;result&quot; : &quot;updated&quot;,
+  &quot;_shards&quot; : {
+    &quot;total&quot; : 2,
+    &quot;successful&quot; : 1,
+    &quot;failed&quot; : 0
+  },
+  &quot;_seq_no&quot; : 1,
+  &quot;_primary_term&quot; : 1
+}
+</code></pre>
+
+<p><strong>3.3.4 删除数据</strong></p>
+
+<pre><code>$ curl -X DELETE 'http://localhost:9200/demo/_doc/yc_BeHUB5PnW6VuaGLjA?pretty'
+{
+  &quot;_index&quot; : &quot;demo&quot;,
+  &quot;_type&quot; : &quot;_doc&quot;,
+  &quot;_id&quot; : &quot;yc_BeHUB5PnW6VuaGLjA&quot;,
+  &quot;_version&quot; : 2,
+  &quot;result&quot; : &quot;deleted&quot;,
+  &quot;_shards&quot; : {
+    &quot;total&quot; : 2,
+    &quot;successful&quot; : 1,
+    &quot;failed&quot; : 0
+  },
+  &quot;_seq_no&quot; : 1,
+  &quot;_primary_term&quot; : 1
+}
+</code></pre>
+
+<p>删除之后再次执行查询操作，可以看到<code>found=false</code></p>
+
+<pre><code>$ curl 'http://localhost:9200/demo/_doc/yc_BeHUB5PnW6VuaGLjA?pretty'
+
+{
+  &quot;_index&quot; : &quot;demo&quot;,
+  &quot;_type&quot; : &quot;_doc&quot;,
+  &quot;_id&quot; : &quot;yc_BeHUB5PnW6VuaGLjA&quot;,
+  &quot;found&quot; : false
+}
+</code></pre>
+
+<h1 id="四-中文分词">四、中文分词</h1>
+
+<p>创建或更新文档时会对文档进行分词，查询时会对查询语句进行分词，分词的效果会最终影响到查询的结果，比如中文字符在默认规则下会按照单个汉字来分：<code>苹</code> + <code>果</code> + <code>笔</code> + <code>记</code> + <code>本</code></p>
+
+<pre><code>cat &lt;&lt; EOF | curl -H &quot;Content-type: application/json&quot; 'http://localhost:9200/area/_analyze?pretty' -d @-
+{
+    &quot;text&quot;: &quot;苹果笔记本&quot;,
+    &quot;analyzer&quot;: &quot;standard&quot;
+}
+EOF
+
+{
+  &quot;tokens&quot; : [
+    {
+      &quot;token&quot; : &quot;苹&quot;,
+      &quot;start_offset&quot; : 0,
+      &quot;end_offset&quot; : 1,
+      &quot;type&quot; : &quot;&lt;IDEOGRAPHIC&gt;&quot;,
+      &quot;position&quot; : 0
+    },
+    ...
+}
+</code></pre>
+
+<p>所以，需要对中文分词的支持，通常可用：ik分词、smartcn<a href="#refer"><sup>[3]</sup></a>。</p>
+
+<h2 id="4-1-安装ik中文分词">4.1 安装ik中文分词</h2>
+
+<p>Github上选择对应版本即可：<code>https://github.com/medcl/elasticsearch-analysis-ik/releases</code></p>
+
+<pre><code>$ ./bin/elasticsearch-plugin install https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.8.12/elasticsearch-analysis-ik-6.8.12.zip
+-&gt; Downloading https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.8.12/elasticsearch-analysis-ik-6.8.12.zip
+[=================================================] 100%
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@     WARNING: plugin requires additional permissions     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+* java.net.SocketPermission * connect,resolve
+See http://docs.oracle.com/javase/8/docs/technotes/guides/security/permissions.html
+for descriptions of what these permissions allow and the associated risks.
+
+Continue with installation? [y/N]y
+-&gt; Installed analysis-ik
+</code></pre>
+
+<p>安装会需要重启。</p>
+
+<h2 id="4-2-ik分析器">4.2 ik分析器</h2>
+
+<p>有两种分词方式：</p>
+
+<p><code>ik_max_word</code>: 会将文本做最细粒度的拆分，比如会将“中华人民共和国国歌”拆分为“中华人民共和国,中华人民,中华,华人,人民共和国,人民,人,民,共和国,共和,和,国国,国歌”，会穷尽各种可能的组合，适合 Term Query；</p>
+
+<p><code>ik_smart</code>: 会做最粗粒度的拆分，比如会将“中华人民共和国国歌”拆分为“中华人民共和国,国歌”，适合 Phrase 查询。</p>
+
+<p>来看看ik的两种示例：用<code>ik_smart</code>方式，苹果笔记本分成了 <code>苹果</code> + <code>笔记本</code>，用<code>ik_max_word</code>方式分成了： <code>苹果</code> + <code>笔记本</code> + <code>笔记</code> + <code>本</code></p>
+
+<pre><code>$ cat &lt;&lt; EOF | curl -H &quot;Content-type: application/json&quot; 'http://localhost:9200/area/_analyze?pretty' -d @-
+{
+    &quot;text&quot;: &quot;苹果笔记本&quot;,
+    &quot;analyzer&quot;: &quot;ik_smart&quot;
+}
+EOF
+
+{
+  &quot;tokens&quot; : [
+    {
+      &quot;token&quot; : &quot;苹果&quot;,
+      &quot;start_offset&quot; : 0,
+      &quot;end_offset&quot; : 2,
+      &quot;type&quot; : &quot;CN_WORD&quot;,
+      &quot;position&quot; : 0
+    },
+    {
+      &quot;token&quot; : &quot;笔记本&quot;,
+      &quot;start_offset&quot; : 2,
+      &quot;end_offset&quot; : 5,
+      &quot;type&quot; : &quot;CN_WORD&quot;,
+      &quot;position&quot; : 1
+    }
+  ]
+}
+
+$ cat &lt;&lt; EOF | curl -H &quot;Content-type: application/json&quot; 'http://localhost:9200/area/_analyze?pretty' -d @-
+{
+    &quot;text&quot;: &quot;苹果笔记本&quot;,
+    &quot;analyzer&quot;: &quot;ik_max_word&quot;
+
+}
+EOF
+
+{
+  &quot;tokens&quot; : [
+    {
+      &quot;token&quot; : &quot;苹果&quot;,
+      &quot;start_offset&quot; : 0,
+      &quot;end_offset&quot; : 2,
+      &quot;type&quot; : &quot;CN_WORD&quot;,
+      &quot;position&quot; : 0
+    },
+    {
+      &quot;token&quot; : &quot;笔记本&quot;,
+      &quot;start_offset&quot; : 2,
+      &quot;end_offset&quot; : 5,
+      &quot;type&quot; : &quot;CN_WORD&quot;,
+      &quot;position&quot; : 1
+    },
+    {
+      &quot;token&quot; : &quot;笔记&quot;,
+      &quot;start_offset&quot; : 2,
+      &quot;end_offset&quot; : 4,
+      &quot;type&quot; : &quot;CN_WORD&quot;,
+      &quot;position&quot; : 2
+    },
+    {
+      &quot;token&quot; : &quot;本&quot;,
+      &quot;start_offset&quot; : 4,
+      &quot;end_offset&quot; : 5,
+      &quot;type&quot; : &quot;CN_CHAR&quot;,
+      &quot;position&quot; : 3
+    }
+  ]
+}
+</code></pre>
+
+<h1 id="五-索引定义">五、索引定义</h1>
+
+<h2 id="5-1-索引类型">5.1 索引类型</h2>
+
+<h3 id="5-1-1-keyword">5.1.1 Keyword</h3>
+
+<ul>
+<li>keyword: 通常用来存储结构化数据，比如ID、Email、状态码、标签等</li>
+<li>constant_keyword: 始终包含相同值的字段</li>
+<li>wildcard: 通配符</li>
+</ul>
+
+<p>Keyword字段常用来做排序、聚合、Term级别查询，避免将keyword用于全文搜索，全文搜索可以使用text类型。</p>
+
+<h3 id="5-1-2-text">5.1.2 Text</h3>
+
+<p>会进行全文索引的字段，会对字段进行分词，然后索引，可以模糊查询。</p>
+
+<h1 id="六-查询语句">六、查询语句</h1>
+
+<h2 id="6-1-查询列表">6.1 查询列表</h2>
+
+<pre><code>{
+  &quot;query&quot;: {
+    &quot;match_all&quot;: {}
+  }
+}
+</code></pre>
+
+<h2 id="6-2-精确查询-term">6.2 精确查询 - Term</h2>
+
+<p>Term查询用于查询确定的值。相当于<code>Where Name = peng</code>。</p>
+
+<pre><code>{
+  &quot;query&quot;: {
+    &quot;term&quot;: {&quot;name&quot;: &quot;Peng&quot;}
+  }
+}
+</code></pre>
+
+<p>相当于<code>Where Name in ('peng', 'lion')</code></p>
+
+<pre><code>{
+  &quot;query&quot;: {
+    &quot;terms&quot;: {&quot;name&quot;: [&quot;Peng&quot;, &quot;Lion&quot;]}
+  }
+}
+</code></pre>
+
+<p>但需要注意的是被查询的字段会否会分词，默认<code>text</code>会分词、忽略大小写，这就可能造成无法返回结果。文本类型有<code>text</code>和<code>keyword</code>类型，其中<code>keyword</code>取代了不需要分词的<code>string</code>。比如：</p>
+
+<pre><code>&quot;name&quot; : {
+  &quot;type&quot; : &quot;text&quot;,
+  &quot;fields&quot; : {
+    &quot;keyword&quot; : {
+      &quot;type&quot; : &quot;keyword&quot;,
+      &quot;ignore_above&quot; : 256
+    }
+  }
+},
+</code></pre>
+
+<p>上面例子如果要精确匹配可以使用下面的<code>keyword</code>：<code>name.keyword</code>。</p>
+
+<h2 id="6-3-全文查询-match">6.3 全文查询 - Match</h2>
+
+<p>会进行分词后查询，默认为或的操作。</p>
+
+<pre><code>{
+  &quot;query&quot;: {
+    &quot;match&quot;: {&quot;name&quot;: &quot;Bobby Peng&quot;}
+  }
+}
+</code></pre>
+
+<p>可调整为<code>and</code></p>
+
+<pre><code>{
+  &quot;query&quot;: {
+     &quot;match&quot;: {
+        &quot;name&quot;: {
+          &quot;query&quot;: &quot;Bobby Peng&quot;,
+          &quot;operator&quot; : &quot;and&quot;
+       }
+      }
+    }
+}
+</code></pre>
+
+<p>match还有2个变种：<code>match_phrase</code> 和 <code>multi_match</code>，match_phrase用于同时满足所有词，同时也可以增加slop调整少一个也行。</p>
+
+<pre><code>{
+  &quot;query&quot;: {
+     &quot;match_phrase&quot;: {
+        &quot;name&quot;: {
+          &quot;query&quot;: &quot;Bobby Peng&quot;,
+          &quot;slop&quot; : 1
+       }
+      }
+    }
+}
+</code></pre>
+
+<p>multi_match用于多个字段匹配，有一个字段满足即可</p>
+
+<pre><code>{
+  &quot;query&quot;: {
+     &quot;multi_match&quot;: {
+          &quot;query&quot;: &quot;Bobby Peng&quot;,
+          &quot;fields&quot; : [&quot;name&quot;, &quot;title&quot;]
+      }
+    }
+}
+</code></pre>
+
+<h2 id="6-4-范围查询">6.4 范围查询</h2>
+
+<pre><code>{
+  &quot;query&quot;: {
+      &quot;range&quot;: {
+          &quot;age&quot;: {
+              &quot;gte&quot;: 18,
+              &quot;lt&quot;: 30 
+          }
+      }
+  }
+}
+</code></pre>
+
+<h2 id="6-5-复合查询">6.5 复合查询</h2>
+
+<p>bool 复合查询用于组合叶子查询语句或复合查询语句。如：must, should, must_not, or filter。</p>
+
+<ul>
+<li>must 必须匹配。</li>
+<li>should 至少匹配一个文档。</li>
+<li>filter 必须匹配，忽略相关性评分。</li>
+<li>must_not 必须不匹配，忽略相关性评分。</li>
+</ul>
+
+<pre><code>GET /_search
+{
+  &quot;query&quot;: { 
+    &quot;bool&quot;: { 
+      &quot;must&quot;: [
+        { &quot;match&quot;: { &quot;title&quot;:   &quot;Search&quot;}},
+        { &quot;match&quot;: { &quot;content&quot;: &quot;Elasticsearch&quot; }}
+      ],
+      &quot;filter&quot;: [ 
+        { &quot;term&quot;:  { &quot;status&quot;: &quot;published&quot;}},
+        { &quot;range&quot;: { &quot;publish_date&quot;: { &quot;gte&quot;: &quot;2015-01-01&quot; }}}
+      ]
+    }
+  },
+  &quot;from&quot;: 0,
+  &quot;size&quot;: 10,
+  &quot;sort&quot;: {
+    &quot;timestamp&quot;: &quot;desc&quot;
+  }
+}
+</code></pre>
+
+<hr />
+
+<div id="refer"></div>
+
+<ul>
+<li>[1] <a href="https://www.elastic.co/guide/en/elasticsearch/reference/6.8/index.html">Elasticsearch Reference 6.8</a></li>
+<li>[2] <a href="https://github.com/medcl/elasticsearch-analysis-ik">elasticsearch-analysis-ik</a></li>
+<li>[3] <a href="https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-smartcn.html">Smart Chinese Analysis Plugin</a></li>
+<li>[4] <a href="http://www.ruanyifeng.com/blog/2017/08/elasticsearch.html">全文搜索引擎 Elasticsearch 入门教程</a></li>
+<li>[5] <a href="https://www.cnblogs.com/sanduzxcvbnm/p/12084607.html">Elasticsearch: analyzer</a></li>
+<li>[6] <a href="https://blog.csdn.net/ZYC88888/article/details/83059040">ES Mapping、字段类型Field type详解</a></li>
+<li>[7] <a href="https://blog.csdn.net/lamp_yang_3533/article/details/97618687">Elasticsearch DSL 查询详解</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2018-12.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2018-12.html">2018-12-01 16:46</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/elasticsearch.html">Elasticsearch</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/elk.html">ELK</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/shell-start.html">Shell脚本入门</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/mongo-install.html">MongoDB环境搭建</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\elastic\全文搜索引擎 - Elasticsearch.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\elastic\全文搜索引擎 - Elasticsearch.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

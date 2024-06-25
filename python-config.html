@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python常用库 ( 5 ) - 配置文件</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python常用库 ( 5 ) - 配置文件</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-简介">一、简介</h1>
+
+<h1 id="二-configparser模块">二、ConfigParser模块</h1>
+
+<h2 id="2-1-configparser-简介">2.1 ConfigParser 简介</h2>
+
+<p><code>ConfigParser</code>是用来读取配置文件的包。配置文件的格式如下：中括号&rdquo;[ ]&ldquo;内包含的为<code>section</code>。<code>section</code>下面为类似于<code>key-value</code>的配置内容。</p>
+
+<pre><code>[db]
+db_host = 127.0.0.1
+db_port = 69
+db_user = root
+db_pass = root
+host_port = 69
+
+[concurrent]
+thread = 10
+processor = 20
+</code></pre>
+
+<h2 id="2-2-configparser-初始化对象">2.2 ConfigParser 初始化对象</h2>
+
+<p>使用ConfigParser 首选需要初始化实例，并读取配置文件：</p>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+</code></pre>
+
+<h2 id="2-4-获取所用的section节点">2.4 获取所用的section节点</h2>
+
+<pre><code># 获取所用的section节点
+import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+print(config.sections())
+#运行结果
+# ['db', 'concurrent']
+</code></pre>
+
+<h2 id="2-5-获取指定section的options">2.5 获取指定section的options。</h2>
+
+<p>即将配置文件某个section 内key 读取到列表中：</p>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+r = config.options(&quot;db&quot;)
+print(r)
+#运行结果
+# ['db_host', 'db_port', 'db_user', 'db_pass', 'host_port']
+</code></pre>
+
+<h2 id="2-6-获取指点section下指点option的值">2.6 获取指点section下指点option的值</h2>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+r = config.get(&quot;db&quot;, &quot;db_host&quot;)
+# r1 = config.getint(&quot;db&quot;, &quot;k1&quot;) #将获取到值转换为int型
+# r2 = config.getboolean(&quot;db&quot;, &quot;k2&quot; ) #将获取到值转换为bool型
+# r3 = config.getfloat(&quot;db&quot;, &quot;k3&quot; ) #将获取到值转换为浮点型
+print(r)
+#运行结果
+# 127.0.0.1
+</code></pre>
+
+<h2 id="2-7-获取指点section的所用配置信息">2.7 获取指点section的所用配置信息</h2>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+r = config.items(&quot;db&quot;)
+print(r)
+#运行结果
+#[('db_host', '127.0.0.1'), ('db_port', '69'), ('db_user', 'root'), ('db_pass', 'root'), ('host_port', '69')]
+</code></pre>
+
+<h2 id="2-8-修改某个option的值-如果不存在则会出创建">2.8 修改某个option的值，如果不存在则会出创建</h2>
+
+<pre><code># 修改某个option的值，如果不存在该option 则会创建
+import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+config.set(&quot;db&quot;, &quot;db_port&quot;, &quot;69&quot;)  #修改db_port的值为69
+config.write(open(&quot;ini&quot;, &quot;w&quot;))
+</code></pre>
+
+<h2 id="2-9-检查section或option是否存在-bool值">2.9 检查section或option是否存在，bool值</h2>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.has_section(&quot;section&quot;) #是否存在该section
+config.has_option(&quot;section&quot;, &quot;option&quot;)  #是否存在该option
+</code></pre>
+
+<h2 id="2-10-添加section-和-option">2.10 添加section 和 option</h2>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+if not config.has_section(&quot;default&quot;):  # 检查是否存在section
+    config.add_section(&quot;default&quot;)
+if not config.has_option(&quot;default&quot;, &quot;db_host&quot;):  # 检查是否存在该option
+    config.set(&quot;default&quot;, &quot;db_host&quot;, &quot;1.1.1.1&quot;)
+config.write(open(&quot;ini&quot;, &quot;w&quot;))
+</code></pre>
+
+<h2 id="2-11-删除section-和-option">2.11 删除section 和 option</h2>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+config.remove_section(&quot;default&quot;) #整个section下的所有内容都将删除
+config.write(open(&quot;ini&quot;, &quot;w&quot;))
+</code></pre>
+
+<h2 id="2-12-写入文件">2.12 写入文件</h2>
+
+<p>以下的几行代码只是将文件内容读取到内存中，进过一系列操作之后必须写回文件，才能生效。</p>
+
+<pre><code>import configparser
+config = configparser.ConfigParser()
+config.read(&quot;ini&quot;, encoding=&quot;utf-8&quot;)
+</code></pre>
+
+<p>写回文件的方式如下：（使用configparser的write方法）</p>
+
+<pre><code>config.write(open(&quot;ini&quot;, &quot;w&quot;))
+</code></pre>
+
+<p>From: <a href="https://www.cnblogs.com/ming5218/p/7965973.html">https://www.cnblogs.com/ming5218/p/7965973.html</a></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-04.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-04.html">2016-04-01 23:03</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/python-database.html">Python常用库 ( 4 ) - 数据库</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/python-requests.html">Python常用库 ( 6 ) - HTTP请求</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 5 ) - 配置文件.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 5 ) - 配置文件.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

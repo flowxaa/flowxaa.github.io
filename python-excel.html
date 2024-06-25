@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python实用库 ( 3 ) - Excel</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python实用库 ( 3 ) - Excel</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>常用的操作<code>Excel</code>的库有：<code>openpyxl</code>、<code>xlsxwriter</code>、<code>xlrd/xlwt</code>、<code>xlutils</code>，从<code>python-excel.org</code>上可以看到一些区别，主流应该还是<code>openpyxl</code>：</p>
+
+<table>
+<thead>
+<tr>
+<th>Packages</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td><code>openpyxl</code></td>
+<td>The <code>recommended package</code> for reading and writing Excel 2010 files (ie: .xlsx)</td>
+</tr>
+
+<tr>
+<td><code>xlsxwriter</code></td>
+<td>XlsxWriter is a Python module for writing files in the Excel 2007+ XLSX file format.</td>
+</tr>
+
+<tr>
+<td><code>xlrd</code></td>
+<td>This library currently has no active maintainers. You are advised to use <code>OpenPyXL</code> instead.</td>
+</tr>
+
+<tr>
+<td><code>xlwt</code></td>
+<td>This package is for writing data and formatting information to <code>older Excel files</code> (ie: .xls)</td>
+</tr>
+
+<tr>
+<td><code>xlutils</code></td>
+<td>对<code>xlrd/xlwt</code>的封装，NB: In general, these use cases are now covered by openpyxl!</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>Excel <code>xls</code>和<code>xlsx</code>的区别在于：</strong></p>
+
+<blockquote>
+<p>1、核心结构上：xls 是一个特有的二进制格式，其核心结构是复合文档类型的结构，而 xlsx 的核心结构是 XML 类型的结构，采用的是基于 XML 的压缩方式，使其占用的空间更小。xlsx 中最后一个 x 的意义就在于此。</p>
+
+<p>2、版本上：xls是2003版本下的文件 ，不管有没有宏程序的话都是xls文件 ，从2007开始做了区分，XLSM文件和XLSX文件都是excel2007及其以后的文件，但前者是含有宏启用，Excel中默认情况下不自动启用宏，默认是XLSX。VBA中，如果不想保存代码，可以保存为xlsx，即可自动删除其中VBA代码，反之则保存为XLSM文件。</p>
+</blockquote>
+
+<h1 id="一-openpyxl">一、OpenPyXL</h1>
+
+<ul>
+<li>项目地址：<code>https://bitbucket.org/openpyxl/openpyxl</code></li>
+<li>文档地址：<code>https://openpyxl.readthedocs.io/en/stable</code></li>
+</ul>
+
+<h2 id="1-1-安装及示例">1.1 安装及示例</h2>
+
+<pre><code>$ pip install openpyxl
+</code></pre>
+
+<p>To be able to include images (jpeg, png, bmp,…) into an openpyxl file, you will also need the <code>pillow</code> library that can be installed with:</p>
+
+<pre><code>$ pip install pillow
+</code></pre>
+
+<h2 id="1-2-创建工作表">1.2 创建工作表</h2>
+
+<pre><code>from openpyxl import Workbook
+
+wb = Workbook()
+
+# 默认工作表
+ws1 = wb.active
+ws1.title = &quot;工作表-1&quot;
+# A1 即表示A1单元格
+ws1[&quot;A1&quot;] = &quot;A1 Hello World&quot;
+
+ws2 = wb.create_sheet(&quot;工作表-2&quot;)
+ws2[&quot;A1&quot;] = &quot;A2 Hello World&quot;
+
+# 创建工作表3并排列在工作表的第一位
+ws3 = wb.create_sheet(&quot;工作表-3&quot;, 0)
+ws3[&quot;A1&quot;] = &quot;A3 Hello World&quot;
+wb.save(&quot;sample.xlsx&quot;)
+</code></pre>
+
+<h2 id="1-3-写入工作表">1.3 写入工作表</h2>
+
+<pre><code>from openpyxl import Workbook
+
+wb = Workbook()
+
+# 默认工作表
+ws1 = wb.active
+ws1.title = &quot;工作表-1&quot;
+ws2 = wb.create_sheet(&quot;工作表-2&quot;)
+ws3 = wb.create_sheet(&quot;工作表-3&quot;, 0)
+
+
+row = [&quot;ID&quot;, &quot;Name&quot;, &quot;Birth&quot;]
+ws1.append(row)
+
+for r in [
+    [1, &quot;Judy&quot;, &quot;2020-01-01&quot;],
+    [2, &quot;Jason&quot;, &quot;2022-01-01&quot;]
+]:
+    ws1.append(r)
+
+wb.save(&quot;sample.xlsx&quot;)
+</code></pre>
+
+<h2 id="1-4-读取工作表">1.4 读取工作表</h2>
+
+<pre><code>from openpyxl import load_workbook
+
+wb = load_workbook(&quot;sample.xlsx&quot;)
+
+sheets = wb.get_sheet_names()
+print(sheets) # ['工作表-3', '工作表-1', '工作表-2']
+sheet1 = wb['工作表-1']
+print(sheet1.title) # 工作表-1
+
+# 获取工作表-1的A1单元格的数据
+print(sheet1[&quot;A2&quot;].value)
+# 通过cell(row, column)方式获取A1的数据
+print(sheet1.cell(2, 1).value)
+
+
+
+# 获取第一个Sheet并遍历
+# sheet1 = wb[wb.sheetnames[0]]
+for row in sheet:
+    for idx in range(0, 10):
+        print(row[idx].value)
+</code></pre>
+
+<h1 id="二-xlrd-xlwt">二、xlrd/xlwt</h1>
+
+<h2 id="2-1-xlrd">2.1 xlrd</h2>
+
+<pre><code>import xlrd
+x1 = xlrd.open_workbook(&quot;data.xlsx&quot;)
+</code></pre>
+
+<p><strong>获取Sheet</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>说明</th>
+<th>操作</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>获取所有sheet名字</td>
+<td>x1.sheet_names()</td>
+</tr>
+
+<tr>
+<td>获取sheet数量</td>
+<td>x1.nsheets</td>
+</tr>
+
+<tr>
+<td>获取所有sheet对象</td>
+<td>x1.sheets()</td>
+</tr>
+
+<tr>
+<td>通过sheet名查找</td>
+<td>x1.sheet_by_name(&ldquo;test&rdquo;)</td>
+</tr>
+
+<tr>
+<td>通过索引查找</td>
+<td>x1.sheet_by_index(3)</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>获取sheet的汇总数据</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>说明</th>
+<th>操作</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>获取sheet名</td>
+<td><code>sheet1.name</code></td>
+</tr>
+
+<tr>
+<td>获取总行数</td>
+<td>sheet1.nrows</td>
+</tr>
+
+<tr>
+<td>获取总列数</td>
+<td>sheet1.ncols</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>行操作</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>sheet1.row_values(0)</td>
+<td>获取第一行所有内容，合并单元格，首行显示值，其它为空。</td>
+</tr>
+
+<tr>
+<td>sheet1.row(0)</td>
+<td>获取单元格值类型和内容</td>
+</tr>
+
+<tr>
+<td>sheet1.row_types(0)</td>
+<td>获取单元格数据类型</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>表操作</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>sheet1.row_values(0, 6, 10)</td>
+<td>取第1行，第6~10列（不含第10表）</td>
+</tr>
+
+<tr>
+<td>sheet1.col_values(0, 0, 5)</td>
+<td>取第1列，第0~5行（不含第5行）</td>
+</tr>
+
+<tr>
+<td>sheet1.row_slice(2, 0, 2)</td>
+<td>获取单元格值类型和内容</td>
+</tr>
+
+<tr>
+<td>sheet1.row_types(1, 0, 2)</td>
+<td>获取单元格数据类型</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>遍历</strong></p>
+
+<pre><code>rs = []
+for idx in range(0, sheet1.nrows):
+    rs.append(table.row_values(idx))
+</code></pre>
+
+<ul>
+<li><a href="https://www.cnblogs.com/zhang-jun-jie/p/9273721.html">python读取excel(xlrd)</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2017-02.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2017-02.html">2017-02-18 23:32</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/python-jieba.html">Python实用库 ( 2 ) - 结巴分词</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/python-qrcode.html">Python实用库 ( 4 ) - 二维码</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python实用库 ( 3 ) - Excel.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python实用库 ( 3 ) - Excel.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

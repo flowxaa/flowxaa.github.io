@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>JMeter压力测试HTTP&TCP</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">JMeter压力测试HTTP&TCP</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-概述">一、概述</h1>
+
+<p>Apache JMeter是Apache组织开发的基于Java的压力测试工具。用于对软件做压力测试，它最初被设计用于Web应用测试但后来扩展到其他测试领域。 它可以用于测试静态和动态资源例如静态文件、Java 小服务程序、CGI 脚本、Java 对象、数据库， FTP 服务器， 等等。JMeter 可以用于对服务器、网络或对象模拟巨大的负载，来自不同压力类别下测试它们的强度和分析整体性能。另外，JMeter能够对应用程序做功能/回归测试，通过创建带有断言的脚本来验证你的程序返回了你期望的结果。为了最大限度的灵活性，JMeter允许使用正则表达式创建断言。</p>
+
+<h1 id="二-安装与启动">二、安装与启动</h1>
+
+<p>下载地址： <a href="http://jmeter.apache.org/download_jmeter.cgi">http://jmeter.apache.org/download_jmeter.cgi</a></p>
+
+<p>JMeter基于Java开发，需要系统有安装JDK环境。解压后进入bin目录，点击<code>jmeter.bat</code>。若运行正常则会进入JMeter控制面板。界面如下：</p>
+
+<p><img src="../../static/uploads/jmeter-start.png" alt="" /></p>
+
+<h1 id="三-常规测试-http">三、常规测试 - HTTP</h1>
+
+<h2 id="3-1-添加线程组">3.1 添加线程组</h2>
+
+<p>测试计划 -&gt; 添加 -&gt; <code>Threads(User)</code> -&gt; 线程组，添加后进入如下界面：</p>
+
+<p><img src="../../static/uploads/jmeter-threads.png" alt="" /></p>
+
+<ul>
+<li><strong>线程数：</strong>表示将模拟多少个用户进行测试。</li>
+<li><strong>Ramp-Up Period(in seconds)：</strong>线程启动间隔，所有线程将在这个时间内依次启动。</li>
+<li><strong>循环次数：</strong>所有线程执行一次为一次循环。</li>
+</ul>
+
+<p>默认为1个线程执行1次，可等请求调通后再修改此处。</p>
+
+<h2 id="3-2-添加采样器">3.2 添加采样器</h2>
+
+<p>样器可理解为针对前面创建的线程需要做什么事情，这里以添加HTTP请求为例。</p>
+
+<p>线程组 -&gt; 添加 -&gt; <code>Sampler</code> -&gt; <code>HTTP请求</code>，添加后进入如下界面：</p>
+
+<p><img src="../../static/uploads/jmeter-HTTP-Sampler.png" alt="" /></p>
+
+<p>从界面上可以看到，分别可以对GET和POST进行压测。同时需要设置请求的域名或IP，端口，请求路径等等参数。同时可以上传文件、设置代理等。</p>
+
+<h2 id="3-3-添加监视器">3.3 添加监视器</h2>
+
+<p>监视器可以理解为针对结果的不同查看方式。JMeter里提供了多种结果表现形式。可通过 HTTP请求 -&gt; 添加 -&gt; 监视器 -&gt; 察看结果树、聚合报告等等。</p>
+
+<h2 id="3-4-运行">3.4 运行</h2>
+
+<p>切换到察看结果树页面，点击工具栏上的绿色执行按钮。如果请求没错会看到HTTP请求的绿色图标。</p>
+
+<p><img src="../../static/uploads/jmeter-result.png" alt="" /></p>
+
+<p>查看请求和响应是否正确。确保无误后可以清空全部（工具栏扫帚按钮）并删掉该页面（留着后面清空比较慢），然后设置线程组中的线程属性。重新执行，在聚合报告页看压测结果，如下图：</p>
+
+<p><img src="../../static/uploads/jmeter-report.png" alt="" /></p>
+
+<p>聚合报告各指标：</p>
+
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>Label</td>
+<td>每个 JMeter 的 element（例如 HTTP Request）都有一个 Name 属性，这里显示的就是 Name 属性的值</td>
+</tr>
+
+<tr>
+<td>#Samples</td>
+<td>表示你这次测试中一共发出了多少个请求，如果模拟10个用户，每个用户迭代10次，那么这里显示100</td>
+</tr>
+
+<tr>
+<td>Average</td>
+<td>平均响应时间——默认情况下是单个 Request 的平均响应时间，单位为毫秒。当使用了 Transaction Controller 时，也可以以Transaction 为单位显示平均响应时间</td>
+</tr>
+
+<tr>
+<td>Median</td>
+<td>中位数，也就是 50％ 用户的响应时间</td>
+</tr>
+
+<tr>
+<td>90% Line</td>
+<td>90％ 用户的响应时间</td>
+</tr>
+
+<tr>
+<td>Min</td>
+<td>最小响应时间</td>
+</tr>
+
+<tr>
+<td>Max</td>
+<td>最大响应时间</td>
+</tr>
+
+<tr>
+<td>Error%</td>
+<td>本次测试中出现错误的请求的数量/请求的总数</td>
+</tr>
+
+<tr>
+<td>Throughput</td>
+<td>吞吐量——默认情况下表示每秒完成的请求数（Request per Second），当使用了 Transaction Controller 时，也可以表示类似 LoadRunner 的 Transaction per Second 数</td>
+</tr>
+
+<tr>
+<td>KB/Sec</td>
+<td>每秒从服务器端接收到的数据量，相当于LoadRunner中的Throughput/Sec</td>
+</tr>
+</tbody>
+</table>
+
+<h1 id="四-tcp压测">四、TCP压测</h1>
+
+<p>官方TCP文档： <a href="https://wiki.apache.org/jmeter/UserManual/Reference/TcpSampler">https://wiki.apache.org/jmeter/UserManual/Reference/TcpSampler</a></p>
+
+<p>同HTTP请求流程，建立线程组后添加TCP取样器，然后根据实际情况配置TCP取样器。</p>
+
+<p><img src="../../static/uploads/jmeter-TCP-Sampler.png" alt="" /></p>
+
+<p>TCPClient classname有三种设置：</p>
+
+<ul>
+<li><strong>TCPClientImpl：</strong>文本数据</li>
+<li><strong>BinaryTCPClientImpl：</strong>传输二进制数据，指定包结束符。</li>
+<li><strong>LengthPrefixedBinaryTCPClientImpl：</strong>数据包中前2个字节为数据长度。可在bin/jmeter.properties配置文件中tcp.binarylength.prefix.length设置。</li>
+</ul>
+
+<p>TCP交互数据包一般有两种协议，协议头返回数据长度或者指定结束符。这里以指定结束符为例传输数据为二进制。</p>
+
+<ul>
+<li>1、设置TCPClient classname：<code>org.apache.jmeter.protocol.tcp.sampler.BinaryTCPClientImpl</code></li>
+<li>2、设置结束符End of line(EOL) byte value.</li>
+<li>3、将数据内容转换为16进制写在要发送的文本区域。</li>
+</ul>
+
+<p>然后就可以测试请求是否正常了。很多时候协议自带的协议可能不满足，就需要自己去写脚本实现了。</p>
+
+<p>以上只是JMeter的一个简单使用，JMeter远远比这个强大，存在Linux下版本，也可以对数据库、FTP、REDIS等进行测试，对请求设置前置、后置处理等等，具体可根据自己的需要来扩展。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-07.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-07.html">2016-07-07 16:21</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/常用软件.html">常用软件</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/linux-web-server.html">Linux下Web环境配置</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/confluence-usage.html">知识管理Confluence：常用基本操作</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\常用软件\JMeter压力测试HTTP&TCP.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\常用软件\JMeter压力测试HTTP&TCP.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Jquery Validate使用及配置</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Jquery Validate使用及配置</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <ul>
+<li>当前版本：v1.11.1</li>
+<li>官网地址：<a href="http://jqueryvalidation.org/">http://jqueryvalidation.org/</a></li>
+</ul>
+
+<h1 id="导入js文件">导入JS文件</h1>
+
+<p>下载压缩包后validate文件位于dist目录，目录中包含jquery.validate.js 与 additional-methods.js以及各自的min文件。additional-methods.js为附加的验证方法，可根据情况导入。</p>
+
+<pre><code>&lt;script src=&quot;./js/jquery.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;./js/jquery.validate.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;./js/additional-methods.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+</code></pre>
+
+<h1 id="使用方法">使用方法</h1>
+
+<p>以注册页为例，需要验证用户名、密码、重复密码、验证码。其中用户名需检测唯一性，验证码需检测是否正确。form-register为表单ID，验证代码如下：</p>
+
+<pre><code>$().ready(function(){
+    $(&quot;#form-register&quot;).validate({
+        debug: true,
+        onfocusout: function (element) {
+            $(element).valid();
+        },
+        errorElement: 'label',
+        errorClass: 'text-error',
+        submitHandler: function(form) {
+            form.submit(); 
+        },
+        errorPlacement: function(error, element) {
+            if(element.attr(&quot;name&quot;) == 'data[captcha]') {
+                error.insertAfter(&quot;#captcha_msg&quot;);
+            } else {
+                error.insertAfter(element);
+            }
+        },
+        rules:{
+            'data[username]': { required: true, minlength: 6, maxlength:20, lettersonly:true, remote:{
+                url: &quot;{{ site_url('ajax/user_check') }}&quot;,
+                type: &quot;post&quot;
+            }},
+            'data[password]': { required: true, minlength: 6, maxlength:50},
+            'data[repassword]': { required: true, equalTo: &quot;#password&quot;},
+            'data[captcha]': { required: true, minlength: 4,remote:{
+                url: &quot;{{ site_url('captcha/check') }}&quot;,
+                type: &quot;post&quot;
+            }}
+        },
+        messages:{}
+    });
+});
+</code></pre>
+
+<h1 id="提示信息">提示信息</h1>
+
+<p>点击提交按钮后验证不通过的会自动在input后增加提示信息</p>
+
+<pre><code>&lt;label for=&quot;username&quot; class=&quot;text-error&quot; style=&quot;&quot;&gt;This field is required.&lt;/label&gt;
+</code></pre>
+
+<p>默认提示信息为英文，可将下面提示信息保存到messages_zh.js并引入。</p>
+
+<pre><code>/*
+ * Translated default messages for the jQuery validation plugin.
+ * Locale: ZH (Chinese, 中文 (Zhōngwén), 汉语, 漢語)
+ */
+(function ($) {
+    $.extend($.validator.messages, {
+        required: &quot;必填字段&quot;,
+        remote: &quot;请修正该字段&quot;,
+        email: &quot;请输入正确格式的电子邮件&quot;,
+        url: &quot;请输入合法的网址&quot;,
+        date: &quot;请输入合法的日期&quot;,
+        dateISO: &quot;请输入合法的日期 (ISO).&quot;,
+        number: &quot;请输入合法的数字&quot;,
+        digits: &quot;只能输入整数&quot;,
+        creditcard: &quot;请输入合法的信用卡号&quot;,
+        equalTo: &quot;请再次输入相同的值&quot;,
+        accept: &quot;请输入拥有合法后缀名的字符串&quot;,
+        maxlength: $.validator.format(&quot;请输入一个长度最多是 {0} 的字符串&quot;),
+        minlength: $.validator.format(&quot;请输入一个长度最少是 {0} 的字符串&quot;),
+        rangelength: $.validator.format(&quot;请输入一个长度介于 {0} 和 {1} 之间的字符串&quot;),
+        range: $.validator.format(&quot;请输入一个介于 {0} 和 {1} 之间的值&quot;),
+        max: $.validator.format(&quot;请输入一个最大为 {0} 的值&quot;),
+        min: $.validator.format(&quot;请输入一个最小为 {0} 的值&quot;)
+    });
+}(jQuery));
+</code></pre>
+
+<p>默认的提示信息可能还不够友好，可以进提示信息进行配置，设置messages字段即可</p>
+
+<pre><code>messages:{
+    'data[username]': {
+        required: '请输入用户名',
+        minlength: '请输入6-20个英文字符',
+        maxlength: '请输入6-20个英文字符',
+        lettersonly: '请输入6-20个英文字符',
+        remote: '该用户名已被使用'
+    },
+    'data[password]': {
+        required: &quot;请输入密码&quot;,
+        minlength: jQuery.format(&quot;密码不能小于{0}个字 符&quot;),
+        maxlength: jQuery.format(&quot;密码不能大于{0}个字 符&quot;)
+    },
+    'data[repassword]': {
+        required: &quot;请输入确认密码&quot;,
+        equalTo: &quot;两次密码输入不一致&quot;
+    },
+    'data[captcha]': {
+        required: &quot;请输入验证码&quot;,
+        minlength: &quot;验证码输入错误&quot;,
+        remote: &quot;验证码输入错误&quot;
+    }
+}
+</code></pre>
+
+<h1 id="常用设置">常用设置</h1>
+
+<ul>
+<li>debug：开启调试，当设置true时只验证， 不会提交表单。</li>
+<li>onfocusout：失去焦点验证，上例中是失去焦点就验证，不需要点击submit按钮。</li>
+<li>errorElement: 用来指定错误提示标签，默认为label。</li>
+<li>errorClass: 指定错误提示的css类名,可以自定义错误提示的样式。</li>
+<li>submitHandler：可以接管submit事件。</li>
+<li>errorPlacement：指定错误显示为位置，默认为验证元素后。</li>
+<li>rules：验证规则。</li>
+<li>message：指定提示信息。</li>
+<li>ignore：对某些元素不进行验证</li>
+</ul>
+
+<h1 id="自定义验证方法">自定义验证方法</h1>
+
+<p>addMethod(name,method,message)方法：</p>
+
+<ul>
+<li>参数name是添加的方法的名字</li>
+<li>参数method是一个函数,接收三个参数(value,element,param)
+
+<ul>
+<li>value是元素的值,</li>
+<li>element是元素本身</li>
+<li>param是参数</li>
+</ul></li>
+</ul>
+
+<p>如additional-methods.js中的lettersonly验证</p>
+
+<pre><code>jQuery.validator.addMethod(&quot;lettersonly&quot;, function(value, element) {
+    return this.optional(element) || /^[a-z]+$/i.test(value);
+}, &quot;Letters only please&quot;);
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2013-06.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2013-06.html">2013-06-01 20:52</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/jquery.html">jquery</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/mysqldump.html">Mysql导出表结构和数据</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/twig-template-language.html">Twig模版语言入门</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\前端设计\Jquery Validate使用及配置.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\前端设计\Jquery Validate使用及配置.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

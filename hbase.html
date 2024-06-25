@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Hbase配置及数据迁移</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Hbase配置及数据迁移</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-关于hbase">一、关于Hbase</a></li>
+<li><a href="#二-准备工作">二、准备工作</a>
+<ul>
+<li><a href="#2-1-安装jdk">2.1 安装jdk</a></li>
+<li><a href="#2-2-配置ssh免登陆">2.2 配置SSH免登陆</a></li>
+<li><a href="#2-3-同步时间">2.3 同步时间</a></li>
+<li><a href="#2-4-配置zookeeper集群">2.4 配置ZooKeeper集群</a></li>
+</ul></li>
+<li><a href="#二-安装hdfs">二、安装HDFS</a></li>
+<li><a href="#三-安装hbase">三、安装Hbase</a></li>
+<li><a href="#四-数据迁移">四、数据迁移</a>
+<ul>
+<li><a href="#4-1-购买bds">4.1 购买BDS</a></li>
+<li><a href="#4-2-配置数据源">4.2 配置数据源</a></li>
+<li><a href="#4-3-账号授权">4.3 账号授权</a></li>
+<li><a href="#4-4-创建迁移任务">4.4 创建迁移任务</a></li>
+</ul></li>
+<li><a href="#五-hbase管理">五、Hbase管理</a>
+<ul>
+<li><a href="#5-1-region均衡">5.1 Region均衡</a></li>
+<li><a href="#5-2-滚动重启">5.2 滚动重启</a></li>
+<li><a href="#5-3-添加节点">5.3 添加节点</a></li>
+<li><a href="#5-4-停止节点">5.4 停止节点</a></li>
+<li><a href="#5-5-重启">5.5 重启</a></li>
+</ul></li>
+<li><a href="#六-hdfs管理">六、HDFS管理</a>
+<ul>
+<li><a href="#6-1-下线节点">6.1 下线节点</a></li>
+<li><a href="#6-2-新增节点">6.2 新增节点</a></li>
+<li><a href="#6-3-增加磁盘">6.3 增加磁盘</a></li>
+<li><a href="#6-4-重启">6.4 重启</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-关于hbase">一、关于Hbase</h1>
+
+<p>HBase是一个分布式，版本化，面向列的开源数据库，构建在 Apache Hadoop和 Apache ZooKeeper之上，基于谷歌三篇论文中的BigTable而实现。</p>
+
+<p>项目从Mongo、Codis切换到Hbase也是看中到他的存储能力，相较于Codis的内存而言，SSD还是廉价很多，借助HDFS的分布式存储能力，在存储这块没有太多担心的，但毕竟是磁盘存储、分部署存储，读的性能上还是差很多，Hbase比较适合写多读少的场景。</p>
+
+<p>使用Hbase两年多来也出现过两次事故，一次是阿里云运维程序触发Major Compaction导致磁盘写满，触发Hbase2.0.3版本meta表Bug，导致集群不可用，当时通过购买新集群解决，但后续做数据迁移的时候导致hbase开始分裂，短时间磁盘写满，集群被锁住，所以对于Hbase的磁盘空间可以预留50%以上的空间。还有一次是配合阿里云做优化，两个集群的数据压缩算法不一致，导致thrift连接打满，类似这些事故导致集群不可用对核心业务的影响还是比较致命的。</p>
+
+<p>兜兜转转下还是决定自己搭建Hbase集群。</p>
+
+<h1 id="二-准备工作">二、准备工作</h1>
+
+<p>Hbase下载地址：<a href="http://hbase.apache.org/downloads.html">http://hbase.apache.org/downloads.html</a></p>
+
+<p>Hadoop下载地址：<a href="https://hadoop.apache.org/releases.html">https://hadoop.apache.org/releases.html</a></p>
+
+<p>Hbase与Hadoop对应关系：<a href="http://hbase.apache.org/book.html#hadoop">http://hbase.apache.org/book.html#hadoop</a></p>
+
+<p><img src="../../static/uploads/hbase-hadoop-support.png" alt="" /></p>
+
+<h2 id="2-1-安装jdk">2.1 安装jdk</h2>
+
+<p>安装JDK并配置环境变量</p>
+
+<pre><code>$ vi /etc/profile
+HADOOP_HOME=/hadoop-2.8.5
+HBASE_HOME=/hbase-2.1.8
+JAVA_HOME=/usr/local/jdk
+PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$HBASE_HOME/bin
+CLASSPATH=$JAVA_HOME/jre/lib/ext:$JAVA_HOME/lib/tools.jar
+export PATH JAVA_HOME CLASSPATH HADOOP_HOME HBASE_HOME
+$ source /etc/profile
+</code></pre>
+
+<h2 id="2-2-配置ssh免登陆">2.2 配置SSH免登陆</h2>
+
+<p>首先给每台机器配置Hosts</p>
+
+<pre><code>192.168.0.100 peng-hbase-1
+192.168.0.101 peng-hbase-2
+192.168.0.102 peng-hbase-3
+192.168.0.103 peng-hbase-4
+</code></pre>
+
+<p>每台机器运行<code>Hbase</code>的账号<code>~/.ssh/authorized_keys</code>增加授权<code>KEY</code>，确保每台机器都可以登录</p>
+
+<pre><code>$ ssh peng-hbase-1
+$ ssh peng-hbase-2
+$ ssh peng-hbase-3
+$ ssh peng-hbase-4
+</code></pre>
+
+<h2 id="2-3-同步时间">2.3 同步时间</h2>
+
+<pre><code>$ ntpdate time.windows.com
+</code></pre>
+
+<h2 id="2-4-配置zookeeper集群">2.4 配置ZooKeeper集群</h2>
+
+<p>参考<a href="https://itopic.org/zookeeper.html">ZooKeeper配置</a></p>
+
+<h1 id="二-安装hdfs">二、安装HDFS</h1>
+
+<p>下载hadoop安装文件，配置文件目录：<code>{hadooppath}/etc/hadoop/</code>，调整配置文件。</p>
+
+<pre><code>-rw-r--r-- 1 hadoop hadoop 4.7K 12月 24 15:57 hadoop-env.sh
+-rw-r--r-- 1 hadoop hadoop 2.8K 12月 24 14:52 hdfs-site.xml
+-rw-r--r-- 1 hadoop hadoop 1.1K 12月 24 14:49 core-site.xml
+-rw-r--r-- 1 hadoop hadoop   80 12月 24 14:48 slaves
+</code></pre>
+
+<p><strong>core-site.xml</strong></p>
+
+<pre><code>&lt;value&gt;hdfs://peng-hbase-1:9000&lt;/value&gt;
+</code></pre>
+
+<p><strong>slaves</strong></p>
+
+<pre><code>peng-hbase-1
+peng-hbase-2
+peng-hbase-3
+peng-hbase-4
+</code></pre>
+
+<p>同步配置文件到各台机器，<code>Master</code>机器上执行格式化<code>namenode</code>，否则可能出现<code>NameNode</code>未启动的情况。(用前面配置授权KEY的账号)</p>
+
+<pre><code>$ hadoop namenode -format
+</code></pre>
+
+<p><strong>启动<code>HDFS</code>:</strong></p>
+
+<pre><code>$ sh /hadoop-2.8.5/sbin/start-dfs.sh
+</code></pre>
+
+<p>只需要在<code>Master</code>机器上启动即可，如果要停止可以执行<code>stop-dfs.sh</code>脚本，正常启动成功之后可以看到：</p>
+
+<pre><code>$ jps -l
+17873 org.apache.zookeeper.server.quorum.QuorumPeerMain
+22635 org.apache.hadoop.hdfs.server.datanode.DataNode
+22429 org.apache.hadoop.hdfs.server.namenode.NameNode
+23789 sun.tools.jps.Jps
+</code></pre>
+
+<p><code>Master</code>机器上存在<code>NameNode</code> + <code>DataNode</code>进程，备用机存在<code>SenondaryNameNode</code> + <code>DataNode</code>，其它只有<code>DataNode</code>。然后就可以访问<code>Master</code>机器上的<code>http://peng-hbase-1:50070</code>，就可以看到</p>
+
+<p><img src="../../static/uploads/dfshealth.png" alt="" /></p>
+
+<p><strong>测试hdfs是否安装成功</strong>，查看文件列表，命令和文件操作的命令类似：</p>
+
+<pre><code>$ hadoop fs -ls /
+Found 1 items
+drwxr-xr-x   - hadoop supergroup          0 2020-12-29 23:56 /hbase
+</code></pre>
+
+<p>创建目录</p>
+
+<pre><code>$ hadoop fs -mkdir /peng
+</code></pre>
+
+<p>上传文件</p>
+
+<pre><code>$ hadoop fs -put README.md /peng
+</code></pre>
+
+<p>下载文件</p>
+
+<pre><code>$ hadoop fs -get /peng/README.md
+</code></pre>
+
+<p>查看文件内容</p>
+
+<pre><code>$ hadoop fs -cat /peng/README.md
+Hello HDFS
+</code></pre>
+
+<p>删除文件</p>
+
+<pre><code>$ hadoop fs -rm /peng/README.md
+</code></pre>
+
+<p>删除目录</p>
+
+<pre><code>$ hadoop fs -rm -r /peng
+</code></pre>
+
+<p>查看Hbase存储占用</p>
+
+<pre><code>$ hadoop fs -du -h /hbase/data
+</code></pre>
+
+<h1 id="三-安装hbase">三、安装Hbase</h1>
+
+<p>下载对应的hbase安装文件，配置文件目录<code>{hbasepath}/conf</code>，调整配置文件：</p>
+
+<pre><code>-rw-r--r-- 1 hadoop hadoop 7.7K 12月 24 17:46 hbase-env.sh
+-rw-r--r-- 1 hadoop hadoop 3.2K 12月 24 15:45 hbase-site.xml
+-rw-r--r-- 1 hadoop hadoop   81 12月 24 15:03 regionservers
+-rw-rw-r-- 1 hadoop hadoop   20 12月 24 15:01 backup-masters
+</code></pre>
+
+<p><strong>regionservers</strong></p>
+
+<pre><code>peng-hbase-1
+peng-hbase-2
+peng-hbase-3
+peng-hbase-4
+</code></pre>
+
+<p><strong>backup-masters</strong></p>
+
+<pre><code>peng-hbase-4
+</code></pre>
+
+<p><strong>hbase-site.xml</strong></p>
+
+<pre><code>&lt;property&gt;
+    &lt;!-- hbase存放数据目录 --&gt;
+    &lt;name&gt;hbase.rootdir&lt;/name&gt;
+    &lt;!-- 端口要和Hadoop的fs.defaultFS端口一致--&gt;
+    &lt;value&gt;hdfs://peng-hbase-1:9000/hbase&lt;/value&gt;
+&lt;/property&gt;
+    
+&lt;property&gt;
+    &lt;!-- list of  zookooper --&gt;
+    &lt;name&gt;hbase.zookeeper.quorum&lt;/name&gt;
+    &lt;value&gt;192.168.0.100:2181,192.168.0.101:2181,192.168.0.102:2181&lt;/value&gt;
+&lt;/property&gt;
+</code></pre>
+
+<p><strong>同步配置文件到各台机器，启动Hbase：</strong></p>
+
+<pre><code>$ sh /hbase-2.1.8/bin/start-hbase.sh
+</code></pre>
+
+<p>只需要在Master机器上启动即可，如果要停止可以执行<code>stop-hbase.sh</code>脚本，正常启动成功之后可以看到：</p>
+
+<pre><code>$ jps -l
+27571 sun.tools.jps.Jps
+17873 org.apache.zookeeper.server.quorum.QuorumPeerMain
+23114 org.apache.hadoop.hbase.master.HMaster
+23229 org.apache.hadoop.hbase.regionserver.HRegionServer
+22429 org.apache.hadoop.hdfs.server.namenode.NameNode
+22635 org.apache.hadoop.hdfs.server.datanode.DataNode
+</code></pre>
+
+<p>访问<code>http://peng-hbase-1:60010</code>可以看到</p>
+
+<p><img src="../../static/uploads/hbase-master-status.png" alt="" /></p>
+
+<p><strong>如果通过thrift连接可以启动thrift服务，</strong>在<code>Master</code>机器执行：</p>
+
+<pre><code>$ sh /hbase-2.1.8/bin/hbase-daemons.sh start thrift
+</code></pre>
+
+<p>注意<code>hbase-daemons.sh</code> 中 <code>daemon</code>后面有个<code>s</code>，不带<code>s</code>的脚本只会启动当前机器的thrift，带<code>s</code>会在所有节点启动<code>thrift</code>。最后Master机器上的进程有：</p>
+
+<pre><code>$ jps -l
+17873 org.apache.zookeeper.server.quorum.QuorumPeerMain
+29202 sun.tools.jps.Jps
+23114 org.apache.hadoop.hbase.master.HMaster
+22635 org.apache.hadoop.hdfs.server.datanode.DataNode
+23900 org.apache.hadoop.hbase.thrift.ThriftServer
+23229 org.apache.hadoop.hbase.regionserver.HRegionServer
+22429 org.apache.hadoop.hdfs.server.namenode.NameNode
+</code></pre>
+
+<p>注：整个配置方式配置了Hosts文件，调用的机器上也需要配置对应的Hosts才能访问。接下来测试Hbase是否安装成功：</p>
+
+<p>登录hbase命令行</p>
+
+<pre><code>$ hbase shell
+HBase Shell
+Use &quot;help&quot; to get list of supported commands.
+Use &quot;exit&quot; to quit this interactive shell.
+For Reference, please visit: http://hbase.apache.org/2.0/book.html#shell
+Version 2.1.8, rd8333e556c8ed739cf39dab58ddc6b43a50c0965, Tue Nov 19 15:29:04 UTC 2019
+Took 0.0024 seconds
+hbase(main):001:0&gt; list
+TABLE
+0 row(s)
+Took 0.3120 seconds
+=&gt; []
+</code></pre>
+
+<p>创建名称空间</p>
+
+<pre><code>&gt; create_namespace 'demo'
+Took 1.1799 seconds
+
+&gt; list_namespace
+NAMESPACE
+demo
+1 row(s)
+Took 0.6149 seconds
+</code></pre>
+
+<p>创建数据表</p>
+
+<pre><code>&gt; create 'demo:peng', { NAME =&gt; 'info', TTL =&gt; 86400, VERSIONS =&gt; 3 } , { NAME =&gt; 'exp' , TTL =&gt; 3600}
+Created table demo:peng
+Took 1.2183 seconds
+=&gt; Hbase::Table - demo:peng
+
+&gt; describe 'demo:peng'
+{
+    NAME =&gt; 'exp', 
+    VERSIONS =&gt; '1', 
+    EVICT_BLOCKS_ON_CLOSE =&gt; 'false', 
+    NEW_VERSION_BEHAVIOR =&gt; 'false', 
+    KEEP_DELETED_CELLS =&gt; 'FALSE', 
+    CACHE_DATA_ON_WRITE =&gt; 'false', 
+    DATA_BLOCK_ENCODING =&gt; 'NONE', 
+    TTL =&gt; '3600 SECONDS (1 HOUR)', 
+    MIN_VERSIONS =&gt; '0', 
+    REPLICATION_SCOPE =&gt; '0', 
+    BLOOMFILTER =&gt; 'ROW', 
+    CACHE_INDEX_ON_WRITE =&gt; 'false', 
+    IN_MEMORY =&gt; 'false', 
+    CACHE_BLOOMS_ON_WRITE =&gt; 'false', 
+    PREFETCH_BLOCKS_ON_OPEN =&gt; 'false', 
+    COMPRESSION =&gt; 'NONE', 
+    BLOCKCACHE =&gt; 'true', 
+    BLOCKSIZE =&gt; '65536'
+},
+{
+    NAME =&gt; 'info', 
+    VERSIONS =&gt; '3', 
+    EVICT_BLOCKS_ON_CLOSE =&gt; 'false', 
+    NEW_VERSION_BEHAVIOR =&gt; 'false', 
+    KEEP_DELETED_CELLS =&gt; 'FALSE', 
+    CACHE_DATA_ON_WRITE =&gt; 'false', 
+    DATA_BLOCK_ENCODING =&gt; 'NONE', 
+    TTL =&gt; '86400 SECONDS (1 DAY)', 
+    MIN_VERSIONS =&gt; '0', 
+    REPLICATION_SCOPE =&gt; '0', 
+    BLOOMFILTER =&gt; 'ROW', 
+    CACHE_INDEX_ON_WRITE =&gt; 'false', 
+    IN_MEMORY =&gt; 'false', 
+    CACHE_BLOOMS_ON_WRITE =&gt; 'false', 
+    PREFETCH_BLOCKS_ON_OPEN =&gt; 'false', 
+    COMPRESSION =&gt; 'NONE', 
+    BLOCKCACHE =&gt; 'true', 
+    BLOCKSIZE =&gt; '65536'
+}
+</code></pre>
+
+<p>写入数据</p>
+
+<pre><code>&gt; put 'demo:peng', 'peng','info:name','peng'
+&gt; put 'demo:peng', 'peng','info:age','18'
+</code></pre>
+
+<p>遍历表</p>
+
+<pre><code>&gt; scan 'demo:peng'
+ROW                            COLUMN+CELL
+ Lion                          column=info:age, timestamp=1609293900382, value=5
+ peng                          column=info:age, timestamp=1609293815916, value=18
+ peng                          column=info:name, timestamp=1609293806251, value=peng
+
+&gt; scan 'demo:peng', {'LIMIT' =&gt; 1}
+ROW                            COLUMN+CELL
+ Lion                          column=info:age, timestamp=1609293900382, value=5
+</code></pre>
+
+<p>查看单条记录</p>
+
+<pre><code>&gt; get 'demo:peng', 'peng'
+COLUMN                         CELL
+ info:age                      timestamp=1609293815916, value=18
+ info:name                     timestamp=1609293806251, value=peng
+</code></pre>
+
+<p>多版本测试，表定义中info中定义VERSIONS = 3，多次更新时会保留最后的3个版本。</p>
+
+<pre><code>&gt; put 'demo:peng', 'peng','info:age','30'
+&gt; put 'demo:peng', 'peng','info:age','32'
+&gt; put 'demo:peng', 'peng','info:age','36'
+&gt; get 'demo:peng', 'peng'
+COLUMN                         CELL
+ info:age                      timestamp=1609306879659, value=36
+ info:name                     timestamp=1609306782683, value=peng
+ 
+&gt; get 'demo:peng','peng',{COLUMN=&gt;'info:age',VERSIONS=&gt;3}
+COLUMN                         CELL
+ info:age                      timestamp=1609306879659, value=36
+ info:age                      timestamp=1609306877282, value=32
+ info:age                      timestamp=1609306864690, value=30
+1 row(s)
+</code></pre>
+
+<p>删除表，删除之前需要先禁用表</p>
+
+<pre><code>&gt; disable 'demo:peng'
+&gt; drop 'demo:peng'
+</code></pre>
+
+<h1 id="四-数据迁移">四、数据迁移</h1>
+
+<h2 id="4-1-购买bds">4.1 购买BDS</h2>
+
+<p>通过阿里云的<code>BDS</code>做数据迁移，在<code>Hbase</code>控制台创建<code>BDS</code>集群，支持从一个Hbase迁移到另一个Hbase集群。</p>
+
+<h2 id="4-2-配置数据源">4.2 配置数据源</h2>
+
+<p>本地数据源配置方式如下，<code>Hosts</code>信息拷贝上面信息即可。</p>
+
+<pre><code>{
+  &quot;clusterKey&quot;:&quot;192.168.0.100,192.168.0.101,192.168.0.101:2181:/hbase,
+  &quot;hbaseDir&quot;:&quot;/hbase&quot;,
+  &quot;hdfsUri&quot;:&quot;hdfs://peng-hbase-1:9000&quot;
+}
+</code></pre>
+
+<p>如果是阿里云的<code>HBase</code>则直接在<code>BDS</code>中的关联数据库中关联即可。</p>
+
+<h2 id="4-3-账号授权">4.3 账号授权</h2>
+
+<p>迁移之前在<code>Master</code>机器创建<code>.copytmp</code>目录并给<code>hadoop</code>账号授权。</p>
+
+<pre><code>$ hadoop fs -mkdir /.copytmp
+$ hadoop fs -chown hadoop /.copytmp
+</code></pre>
+
+<p>未授权时出现的错误为：</p>
+
+<pre><code>err=org.apache.hadoop.security.AccessControlException: Permission denied: user=hadoop, access=WRITE
+</code></pre>
+
+<h2 id="4-4-创建迁移任务">4.4 创建迁移任务</h2>
+
+<p>在<code>BDS</code>后台创建迁移任务即可。</p>
+
+<p><img src="../../static/uploads/hbase-bds.png" alt="" /></p>
+
+<h1 id="五-hbase管理">五、Hbase管理</h1>
+
+<h2 id="5-1-region均衡">5.1 Region均衡</h2>
+
+<p>用来均衡多个RegionServer之间的Region数量（Num.Regions），在RegionServer扩容或者缩容过程中都会引起Region的重新分配。可以通过<code>balancer_enabled</code>查看开关。</p>
+
+<pre><code>$ hbase shell
+hbase(main):001:0&gt; balancer_enabled
+true
+Took 0.3317 seconds
+=&gt; true
+</code></pre>
+
+<p>也可以手动设置关闭</p>
+
+<pre><code>hbase(main):003:0&gt; balance_switch false
+Previous balancer state : true
+Took 0.0428 seconds
+=&gt; &quot;true&quot;
+</code></pre>
+
+<p>当关闭后会提示</p>
+
+<pre><code>The Load Balancer is not enabled which will eventually cause performance degradation in HBase 
+as Regions will not be distributed across all RegionServers. 
+The balancer is only expected to be disabled during rolling upgrade scenarios.
+</code></pre>
+
+<h2 id="5-2-滚动重启">5.2 滚动重启</h2>
+
+<p>有个<code>./rolling-restart.sh</code>可以操作滚动重启，但在重启过程中集群会出现不可用。理论上配置文件的修改、节点上下线都可以通过该操作完成。</p>
+
+<blockquote>
+<p>操作的是重启，如果要下线可以先停掉指定节点，然后执行重启。</p>
+</blockquote>
+
+<h2 id="5-3-添加节点">5.3 添加节点</h2>
+
+<p>和前面配置相同，需要添加Host、配置SSH登录、添加regionservers。然后在添加的节点执行：</p>
+
+<pre><code>./hbase-daemon.sh start regionserver
+</code></pre>
+
+<p>启动之后Regions会重新分配，在执行均衡的过程中可能出现某些region不可用的情况。</p>
+
+<pre><code>3 region(s) in transition. 0 region(s) in transition for more than 60000 milliseconds.
+</code></pre>
+
+<h2 id="5-4-停止节点">5.4 停止节点</h2>
+
+<p>通过<code>graceful_stop.sh</code>脚本执行节点下线</p>
+
+<pre><code>$ ./graceful_stop.sh peng-hbase-4
+2021-01-07T15:12:34 Disabling load balancer
+2021-01-07T15:12:39 Previous balancer state was false
+2021-01-07T15:12:39 Unloading peng-hbase-4 region(s)
+...
+2021-01-07T15:13:21 Unloaded peng-hbase-4 region(s)
+2021-01-07T15:13:21 Stopping regionserver on peng-hbase-4
+2021-01-07T15:22:23 Restoring balancer state to true
+</code></pre>
+
+<p>通过日志看到停止过程中有停止负载均衡，迁移<code>region</code>然后停掉<code>regionserver</code>再次打开<code>Region</code>均衡开关。</p>
+
+<h2 id="5-5-重启">5.5 重启</h2>
+
+<p>重启<code>master</code></p>
+
+<pre><code>$ ./hbase-daemon.sh stop master
+$ ./hbase-daemon.sh start master
+</code></pre>
+
+<p>重启<code>regionserver</code></p>
+
+<pre><code>$ ./graceful_stop.sh --restart peng-hbase-4
+</code></pre>
+
+<p>也可以通过<code>rolling</code>脚本启动所有<code>master</code>或<code>regionserver</code></p>
+
+<pre><code>$ ./rolling-restart.sh --master-only
+$ ./rolling-restart.sh --rs-only
+</code></pre>
+
+<p>启停集群</p>
+
+<pre><code>$ ./hbase-2.1.8/bin/start-hbase.sh
+$ ./hbase-2.1.8/bin/stop-hbase.sh
+</code></pre>
+
+<h1 id="六-hdfs管理">六、HDFS管理</h1>
+
+<h2 id="6-1-下线节点">6.1 下线节点</h2>
+
+<p><code>hdfs-site.xml</code>文件配置黑名单，增加需要下线的节点</p>
+
+<pre><code>    &lt;property&gt;
+        &lt;name&gt;dfs.hosts.exclude&lt;/name&gt;
+        &lt;value&gt;/hadoop-2.8.5/etc/hadoop/excludes&lt;/value&gt;
+    &lt;/property&gt;
+</code></pre>
+
+<p>主NameNode上刷新节点，会做数据迁移</p>
+
+<pre><code>$ hdfs dfsadmin -refreshNodes
+</code></pre>
+
+<p>查看节点状态为Decommission in progress</p>
+
+<pre><code>$ hdfs dfsadmin -report
+Name: 192.168.0.103:50010 (peng-hbase-4)
+Hostname: peng-hbase-4
+Decommission Status : Decommission in progress
+Configured Capacity: 802297069568 (747.20 GB)
+DFS Used: 56288714752 (52.42 GB)
+Non DFS Used: 0 (0 B)
+DFS Remaining: 702790262950 (654.52 GB)
+DFS Used%: 7.02%
+DFS Remaining%: 87.60%
+Configured Cache Capacity: 0 (0 B)
+Cache Used: 0 (0 B)
+Cache Remaining: 0 (0 B)
+Cache Used%: 100.00%
+Cache Remaining%: 0.00%
+Xceivers: 5
+Last contact: Thu Jan 07 17:55:07 CST 2021
+</code></pre>
+
+<p>待状态变为Decommissioned后在对应节点停止datanode</p>
+
+<pre><code>$ hadoop-daemon.sh stop datanode 
+</code></pre>
+
+<p>调整slaves文件并清空excludes数据，重新刷新节点，这个过程需要等待一定时间后会被认定为节点已死。</p>
+
+<h2 id="6-2-新增节点">6.2 新增节点</h2>
+
+<p>修改slaves文件增加新节点，然后执行刷新节点</p>
+
+<pre><code>$ hdfs dfsadmin -refreshNodes
+</code></pre>
+
+<p>启动DataNode</p>
+
+<pre><code>$ hadoop-daemon.sh start datanode 
+</code></pre>
+
+<p>重新平衡</p>
+
+<pre><code>$ ./sbin/start-balancer.sh
+</code></pre>
+
+<h2 id="6-3-增加磁盘">6.3 增加磁盘</h2>
+
+<p>调整hadoop中hdfs-site.xml文件并重启</p>
+
+<pre><code>&lt;property&gt;
+    &lt;name&gt;dfs.namenode.name.dir&lt;/name&gt;
+    &lt;value&gt;/data/hdfs/name,/data1/hdfs/name&lt;/value&gt;
+    &lt;description&gt;表示NameNode需要存储数据的地方&lt;/description&gt;
+&lt;/property&gt;
+&lt;property&gt;
+    &lt;name&gt;dfs.datanode.data.dir&lt;/name&gt;
+    &lt;value&gt;/data/hdfs/data,/data1/hdfs/data&lt;/value&gt;
+    &lt;description&gt;DataNode存放数据的地方&lt;/description&gt;
+&lt;/property&gt;
+</code></pre>
+
+<h2 id="6-4-重启">6.4 重启</h2>
+
+<p>操作指定节点后查看Datanode Information管理页面就可以看到新增的存储空间了。我这里数据有多份，逐一重启datanode后扩容成功。</p>
+
+<pre><code>$ ./hadoop-daemon.sh stop datanode 
+$ ./hadoop-daemon.sh start datanode 
+</code></pre>
+
+<p>直接启停整个集群可使用</p>
+
+<pre><code>$ ./start-dfs.sh
+$ ./stop-dfs.sh
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-01.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-01.html">2021-01-01 16:00</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/hbase.html">Hbase</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/centos-8-eos.html">CentOS 8 落幕，“免费”的 RHEL 没了</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/k8s-online.html">Kubernetes项目实践 - ACK集群</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\大数据\Hbase配置及数据迁移.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\大数据\Hbase配置及数据迁移.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

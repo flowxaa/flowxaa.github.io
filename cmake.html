@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>CMake整理</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">CMake整理</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="cmake简介">CMake简介</h1>
+
+<p>CMake 是一个跨平台的自动化建构系统,它使用一个名为 CMakeLists.txt 的文件来描述构建过程,可以产生标准的构建文件,如 Unix 的 Makefile 或Windows Visual C++ 的 projects/workspaces 。文件 CMakeLists.txt 需要手工编写,也可以通过编写脚本进行半自动的生成。CMake 提供了比 autoconfig 更简洁的语法。在 linux 平台下使用 CMake 生成 Makefile 并编译的流程如下:</p>
+
+<ul>
+<li>1、编写 CmakeLists.txt。</li>
+<li>2、执行命令“cmake PATH”或者“ccmake PATH”生成 Makefile ( PATH 是 CMakeLists.txt 所在的目录 )。</li>
+<li>3、使用 make 命令进行编译。</li>
+</ul>
+
+<h1 id="安装cmake">安装CMAKE</h1>
+
+<pre><code># wget http://www.cmake.org/files/v3.2/cmake-3.2.2.tar.gz
+# tar zxvf cmake-3.2.2.tar.gz 
+# cd cmake-3.2.2/
+# ./bootstrap 
+# make &amp;&amp; make install
+</code></pre>
+
+<p>接下来通过cmake来构建一个简单的HelloWorld项目。</p>
+
+<h1 id="hello-world">Hello World</h1>
+
+<pre><code>$ more main.cpp 
+#include &lt;iostream&gt;
+ 
+int main(int argc, char **argv) {
+    std::cout &lt;&lt; &quot;Hello, world!&quot; &lt;&lt; std::endl;
+    return 0;
+}
+</code></pre>
+
+<p>接下来按照流程第一步编写CMakeLists.txt文件，下面为Kdevelop4.6创建project后自动生成的CMakeLists.txt。这里CMakeLists.txt和main.cpp在同一目录。</p>
+
+<pre><code>$ more CMakeLists.txt 
+cmake_minimum_required(VERSION 2.6)
+project(main)
+ 
+add_executable(main main.cpp)
+ 
+install(TARGETS main RUNTIME DESTINATION bin)
+</code></pre>
+
+<p>第二步，执行命令“cmake PATH”生成Makefile。</p>
+
+<pre><code>$ cmake .
+-- The C compiler identification is GNU 4.8.2
+-- The CXX compiler identification is GNU 4.8.2
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/peng/projects/main
+</code></pre>
+
+<p>第三步，使用 make 命令进行编译，即可生成可执行程序main，直接执行main程序即可看到Hello,world!</p>
+
+<pre><code>$ make
+Scanning dependencies of target main
+[100%] Building CXX object CMakeFiles/main.dir/main.o
+Linking CXX executable main
+[100%] Built target main
+</code></pre>
+
+<p>最后CMakeLists也指定了install，也可执行make install操作，可将main程序安装到指定目录。</p>
+
+<pre><code>$ sudo make install
+[100%] Built target main
+Install the project...
+-- Install configuration: &quot;&quot;
+-- Installing: /usr/local/bin/main
+</code></pre>
+
+<p>至此，一个项目的编译安装就完成了。当然，也可以直接通过G++来编译，而且单文件时看起来似乎更简单，一句话就可以搞定。</p>
+
+<pre><code>g++ -o main main.cpp
+</code></pre>
+
+<p><strong>接下来看看CMake相关知识点</strong></p>
+
+<h1 id="cmake基本语法规则">cmake基本语法规则</h1>
+
+<ul>
+<li>1，变量使用${}方式取值，但是在 IF 控制语句中是直接使用变量名</li>
+<li>2，指令(参数 1 参数 2&hellip;)
+参数使用括弧括起，参数之间使用空格或分号分开。以上面的 ADD_EXECUTABLE 指令为例，如果存在另外一个 func.cpp 源文件，就要写成：
+<code>
+ADD_EXECUTABLE(hello main.cpp func.cpp)
+</code>
+或者
+<code>
+ADD_EXECUTABLE(hello main.cpp;func.cpp)
+</code></li>
+<li>3，指令是大小写无关的，参数和变量是大小写相关的。但推荐你全部使用大写指令。</li>
+</ul>
+
+<p>上面的示例未内部构建（in-source build），而cmake强烈推荐的是外部构建（out-of-source build）。</p>
+
+<h1 id="内部构建与外部构建">内部构建与外部构建</h1>
+
+<p>在cmake中有两个预定义变量：<code>projectname_BINARY_DIR</code>以及<code>projectname_SOURCE_DIR</code>。在我们的项目中，两个变量分别为：main_BINARY_DIR和main_SOURCE_DIR。</p>
+
+<p>同时cmake还预定义了PROJECT_BINARY_DIR和PROJECT_SOURCE_DIR变量。在前面项目中，PROJECT_BINARY_DIR等同于main_BINARY_DIR，PROJECT_SOURCE_DIR等同于main_SOURCE_DIR。但在有些情况下会有所不同。执行cmake有两种方式：</p>
+
+<pre><code>cmake .
+make
+</code></pre>
+
+<p>或者</p>
+
+<pre><code>mkdir build
+cd build
+cmake ..
+make
+</code></pre>
+
+<p>两种方法最大的不同在于执行cmake和make的工作路径不同。第一种方法中，cmake生成的所有中间文件和可执行文件都会存放在项目目录中；而第二种方法中，中间文件和可执行文件都将存放在build目录中。第二种方法的优点显而易见，它最大限度的保持了代码目录的整洁。同时由于第二种方法的生成、编译和安装是发生在不同于项目目录的其他目录中，所以第二种方法就叫做“外部构建”。在外部构建的情况下，PROJECT_SOURCE_DIR指向的目录同内部构建相同，仍然为~/main，而PROJECT_BINARY_DIR则有所不同，指向~/main/build目录。当然，cmake强烈推荐使用外部构建的方法。同时在实际的应用中推荐使用PROJECT_BINARY_DIR和PROJECT_SOURCE_DIR变量，这样即使项目名称发生变化也不会影响CMakeLists.txt文件。</p>
+
+<h1 id="安装-install指令">安装 - INSTALL指令</h1>
+
+<p>这里需要引入一个新的 cmake 指令 INSTALL 和一个非常有用的变量 CMAKE_INSTALL_PREFIX。CMAKE_INSTALL_PREFIX 变量类似于 configure 脚本的 –prefix，常见的使用方法看起来是这个样子：</p>
+
+<pre><code>cmake -DCMAKE_INSTALL_PREFIX=/usr .
+</code></pre>
+
+<p>INSTALL 指令用于定义安装规则，安装的内容可以包括目标二进制、动态库、静态库以及文件、目录、脚本等。INSTALL 指令包含了各种安装类型，我们需要一个个分开解释：</p>
+
+<p><strong>目标文件的安装：</strong></p>
+
+<pre><code>INSTALL(TARGETS targets...
+    [[ARCHIVE|LIBRARY|RUNTIME]
+        [DESTINATION &lt;dir&gt;]
+        [PERMISSIONS permissions...]
+        [CONFIGURATIONS
+    [Debug|Release|...]]
+        [COMPONENT &lt;component&gt;]
+        [OPTIONAL]
+       ] [...])
+</code></pre>
+
+<p>参数中的 TARGETS 后面跟的就是我们通过 ADD_EXECUTABLE 或者 ADD_LIBRARY 定义的目标文件，可能是可执行二进制、动态库、静态库。</p>
+
+<p>目标类型也就相对应的有三种，ARCHIVE 特指静态库，LIBRARY 特指动态库，RUNTIME特指可执行目标二进制。</p>
+
+<p>DESTINATION 定义了安装的路径，如果路径以/开头，那么指的是绝对路径，这时候CMAKE_INSTALL_PREFIX 其实就无效了。如果你希望使用 CMAKE_INSTALL_PREFIX 来定义安装路径，就要写成相对路径，即不要以/开头，那么安装后的路径就是
+${CMAKE_INSTALL_PREFIX}/</p>
+
+<p>举个简单的例子：</p>
+
+<pre><code>INSTALL(TARGETS myrun mylib mystaticlib
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION libstatic
+)
+</code></pre>
+
+<p>上面的例子会将：</p>
+
+<ul>
+<li>可执行二进制 myrun 安装到${CMAKE_INSTALL_PREFIX}/bin 目录</li>
+<li>动态库 libmylib 安装到${CMAKE_INSTALL_PREFIX}/lib 目录</li>
+<li>静态库 libmystaticlib 安装到${CMAKE_INSTALL_PREFIX}/libstatic 目录</li>
+<li>特别注意的是你不需要关心 TARGETS 具体生成的路径，只需要写上 TARGETS 名称就可以了。</li>
+</ul>
+
+<p><strong>普通文件的安装：</strong></p>
+
+<pre><code>INSTALL(FILES files... DESTINATION &lt;dir&gt;
+    [PERMISSIONS permissions...]
+    [CONFIGURATIONS [Debug|Release|...]]
+    [COMPONENT &lt;component&gt;]
+    [RENAME &lt;name&gt;] [OPTIONAL])
+</code></pre>
+
+<p>可用于安装一般文件，并可以指定访问权限，文件名是此指令所在路径下的相对路径。如果默认不定义权限 PERMISSIONS，安装后的权限为：OWNER_WRITE, OWNER_READ, GROUP_READ,和 WORLD_READ，即 644 权限。</p>
+
+<p><strong>非目标文件的可执行程序安装(比如脚本之类)：</strong></p>
+
+<pre><code>INSTALL(PROGRAMS files... DESTINATION &lt;dir&gt;
+    [PERMISSIONS permissions...]
+    [CONFIGURATIONS [Debug|Release|...]]
+    [COMPONENT &lt;component&gt;]
+    [RENAME &lt;name&gt;] [OPTIONAL])
+</code></pre>
+
+<p>跟上面的 FILES 指令使用方法一样，唯一的不同是安装后权限为:OWNER_EXECUTE, GROUP_EXECUTE, 和 WORLD_EXECUTE，即 755 权限</p>
+
+<p><strong>目录的安装：</strong></p>
+
+<pre><code>INSTALL(DIRECTORY dirs... DESTINATION &lt;dir&gt;
+    [FILE_PERMISSIONS permissions...]
+    [DIRECTORY_PERMISSIONS permissions...]
+    [USE_SOURCE_PERMISSIONS]
+    [CONFIGURATIONS [Debug|Release|...]]
+    [COMPONENT &lt;component&gt;]
+    [[PATTERN &lt;pattern&gt; | REGEX &lt;regex&gt;]
+    [EXCLUDE] [PERMISSIONS permissions...]] [...])
+</code></pre>
+
+<p>这里主要介绍其中的 DIRECTORY、PATTERN 以及 PERMISSIONS 参数。</p>
+
+<p>DIRECTORY 后面连接的是所在 Source 目录的相对路径，但务必注意：abc 和 abc/有很大的区别。如果目录名不以/结尾，那么这个目录将被安装为目标路径下的 abc，如果目录名以/结尾，代表将这个目录中的内容安装到目标路径，但不包括这个目录本身。PATTERN 用于使用正则表达式进行过滤，PERMISSIONS 用于指定 PATTERN 过滤后的文件权限。</p>
+
+<p>我们来看一个例子:</p>
+
+<pre><code>INSTALL(DIRECTORY icons scripts/ DESTINATION share/myproj
+    PATTERN &quot;CVS&quot; EXCLUDE
+    PATTERN &quot;scripts/*&quot;
+    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ)
+</code></pre>
+
+<p>这条指令的执行结果是：</p>
+
+<p>将 icons 目录安装到 /share/myproj，将 scripts/中的内容安装到 /share/myproj 不包含目录名为 CVS 的目录，对于 scripts/*文件指定权限为 OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ.</p>
+
+<h1 id="常用命令">常用命令</h1>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>cmake_minimum_required</td>
+<td>指定cmake最低版本</td>
+</tr>
+
+<tr>
+<td>project(main)</td>
+<td>指定项目的名称。</td>
+</tr>
+
+<tr>
+<td>add_executable(main main.cpp)</td>
+<td>生成可执行程序main，可指定多个文件，空格分隔</td>
+</tr>
+
+<tr>
+<td>add_subdirectory</td>
+<td>ADD_SUBDIRECTORY(source_dir [binary_dir] [EXCLUDE_FROM_ALL])</td>
+</tr>
+
+<tr>
+<td>add_library</td>
+<td>add_library(Hello hello.cxx) #将hello.cxx编译成静态库如libHello.a</td>
+</tr>
+
+<tr>
+<td>target_link_libraries</td>
+<td>指定链接目标文件时需要链接的外部库，相同于gcc参数-l，可以解决外部库的依赖问题。</td>
+</tr>
+
+<tr>
+<td>link_directories</td>
+<td>动态链接库或静态链接库的搜索路径，相当于gcc的-L参数；</td>
+</tr>
+
+<tr>
+<td>link_libraries</td>
+<td></td>
+</tr>
+
+<tr>
+<td>include_directories</td>
+<td>指定编译过程中编译器搜索头文件的路径，当项目不在系统默认的搜索路径时需要指定头文件的搜索路径，相当于指定gcc的-I参数；</td>
+</tr>
+
+<tr>
+<td>add_definitions</td>
+<td>添加编译参数</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>message</strong> message(SEND_ERROR|STATUS|FATAL_ERROR “message to display”)</p>
+
+<p>SEND_ERROR，产生错误，生成过程被跳过。SATUS，输出前缀为&ndash;的信息。FATAL_ERROR，立即终止所有 cmake 过程。示例如，</p>
+
+<pre><code>message(STATUS ${PROJECT_BINARY_DIR})
+message(STATUS ${PROJECT_SOURCE_DIR})
+</code></pre>
+
+<p><strong>set命令</strong> SET(VAR [VALUE] [CACHE TYPE DOCSTRING [FORCE]])
+SET 指令可以用来显式的定义变量即可。比如</p>
+
+<pre><code>set(SRC_LIST main.c)
+set(CMAKE_INSTALL_PREFIX /usr/local)
+</code></pre>
+
+<p>如果有多个源文件，也可以定义成：</p>
+
+<pre><code>SET(SRC_LIST main.c t1.c t2.c)
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2015-04.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2015-04.html">2015-04-30 18:24</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/c++.html">C++</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/c-malloc-free.html">C语言之内存的申请malloc() 和释放free()</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/linux-c-chatroom-demo.html">Linux下多线程聊天程序</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\cpp\CMake整理.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\cpp\CMake整理.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python爬虫库 ( 4 ) - Selenium</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python爬虫库 ( 4 ) - Selenium</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-安装">一、安装</h1>
+
+<h2 id="1-1-安装selenium">1.1 安装selenium</h2>
+
+<pre><code>pip install selenium
+</code></pre>
+
+<h2 id="1-2-下载浏览器驱动">1.2 下载浏览器驱动</h2>
+
+<p>Chrome驱动：<code>https://chromedriver.storage.googleapis.com/index.html?path=76.0.3809.126/</code></p>
+
+<h1 id="二-测试使用">二、测试使用</h1>
+
+<pre><code># coding: utf-8
+
+from selenium import webdriver
+
+URL = &quot;https://www.toutiao.com&quot;
+CHROME_DRIVER_BINARY = &quot;/usr/local/bin/chromedriver&quot;
+
+op = webdriver.ChromeOptions()
+op.add_argument('--headless')
+op.add_argument('--disable-gpu')
+driver = webdriver.Chrome(CHROME_DRIVER_BINARY, options=op)
+driver.get(URL)
+
+# 打印渲染之后的HTML源文件
+print(driver.page_source)
+driver.close()
+</code></pre>
+
+<p>如果是去掉<code>--headless</code>配置，则会看到启动<code>Chrome</code>浏览器，并打开<code>toutiao.com</code></p>
+
+<p><img src="../../static/uploads/selenium-chrome-screenshot.png" alt="" /></p>
+
+<p>文档：<a href="https://selenium-python-zh.readthedocs.io/en/latest/">https://selenium-python-zh.readthedocs.io/en/latest/</a></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2017-04.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2017-04.html">2017-04-21 18:42</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/爬虫.html">爬虫</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/requests.html">Python爬虫库 ( 3 ) - Requests</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/beautifulsoup.html">Python爬虫库 ( 5 ) - BeautifulSoup</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python爬虫库 ( 4 ) - Selenium.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python爬虫库 ( 4 ) - Selenium.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

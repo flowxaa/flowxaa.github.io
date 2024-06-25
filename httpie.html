@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>HTTP命令行客户端 - HTTPie</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">HTTP命令行客户端 - HTTPie</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-简介">一、简介</h1>
+
+<p>HTTPie是一个命令行下的类似CURL的HTTP请求工具，使用Python开发，相比CURL而言参数更精简、人性化，通过http命令很容易发送一些日常的http请求。</p>
+
+<p>HTTPie的安装可参考：<code>https://github.com/jakubroztocil/httpie</code>，安装完成后即可使用<code>http</code>命令</p>
+
+<h1 id="二-http命令">二、http命令</h1>
+
+<pre><code>Usage: http [flags] [METHOD] URL [REQUEST_ITEM [REQUEST_ITEM ...]]
+</code></pre>
+
+<p>唯一不可缺少的是<code>URL</code>参数，其他参数都有一些默认行为，请求示例：</p>
+
+<pre><code>$ http -v itopic.org
+GET / HTTP/1.1
+Accept: */*
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Host: itopic.org
+User-Agent: HTTPie/1.0.2
+
+HTTP/1.1 301 Moved Permanently
+Connection: keep-alive
+Content-Length: 185
+Content-Type: text/html
+Date: Tue, 12 Mar 2019 13:52:14 GMT
+Location: https://itopic.org/
+Server: nginx/1.15.3
+</code></pre>
+
+<h2 id="2-1-常用flags定义">2.1 常用flags定义</h2>
+
+<h2 id="2-2-method定义">2.2 METHOD定义</h2>
+
+<p>可选的<code>METHOD</code>参数，支持<code>GET</code>、<code>POST</code>、<code>PUT</code>、<code>DELETE</code>等。
+当没有指定该参数时，如果有数据传递则会设置为<code>POST</code>，否则会设置为<code>GET</code>，如：</p>
+
+<pre><code>http -v itopic.org from=httpie
+POST / HTTP/1.1
+Accept: application/json, */*
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Content-Length: 18
+Content-Type: application/json
+Host: itopic.org
+User-Agent: HTTPie/1.0.2
+
+{
+    &quot;from&quot;: &quot;httpie&quot;
+}
+</code></pre>
+
+<h2 id="2-3-url定义">2.3 URL定义</h2>
+
+<p>支持<code>http://</code>、<code>https://</code>，默认不指定时为<code>http://</code>，如果是localhost也可以省略为<code>http :/demo</code> 等同于 <code>http http://localhost/demo</code></p>
+
+<h2 id="2-4-request-item-定义">2.4 REQUEST_ITEM 定义</h2>
+
+<p>像<code>curl</code>里通过<code>-H Content-Type:application/json</code>来指定HTTP头部信息，<code>-d</code>来指定<code>POST</code>数据信息。而<code>http</code>命令里主要根据一些简单的符号来区分如何传递数据，配合示例就一清二楚了。</p>
+
+<table>
+<thead>
+<tr>
+<th>序号</th>
+<th>符号</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>2.4.1</td>
+<td>:</td>
+<td>HTTP头部信息</td>
+</tr>
+
+<tr>
+<td>2.4.2</td>
+<td>==</td>
+<td>URL参数</td>
+</tr>
+
+<tr>
+<td>2.4.3</td>
+<td>=</td>
+<td>键值对，用来传输<code>json</code>数据或者表单数据。默认会当json处理，指定<code>-f</code>时会当表单数据提交。</td>
+</tr>
+
+<tr>
+<td>2.4.4</td>
+<td>:=</td>
+<td>非JSON字符串类型的数据。如：<code>awesome:=true  amount:=42  colors:='[&quot;red&quot;, &quot;green&quot;, &quot;blue&quot;]'</code>。只在<code>json</code>传输起作用。</td>
+</tr>
+
+<tr>
+<td>2.4.5</td>
+<td>@</td>
+<td>上传文件</td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="2-4-1-指定头部示例">2.4.1 指定头部示例</h3>
+
+<pre><code>$ http -v itopic.org X-Powered-By:itopic
+GET / HTTP/1.1
+Accept: */*
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Host: itopic.org
+User-Agent: HTTPie/1.0.2
+X-Powered-By: itopic
+</code></pre>
+
+<h3 id="2-4-2-设置query参数">2.4.2 设置Query参数</h3>
+
+<pre><code>$ http -v itopic.org from==tools
+GET /?from=tools HTTP/1.1
+Accept: */*
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Host: itopic.org
+User-Agent: HTTPie/1.0.2
+</code></pre>
+
+<h3 id="2-4-3-设置请求数据">2.4.3 设置请求数据</h3>
+
+<p>不指定类型时默认为<code>json</code>数据类型。因为有提交数据，默认请求会用<code>POST</code>方式请求，也可以显示指定。</p>
+
+<pre><code>$ http -v itopic.org from=tools name=httpie
+POST / HTTP/1.1
+Accept: application/json, */*
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Content-Length: 35
+Content-Type: application/json
+Host: itopic.org
+User-Agent: HTTPie/1.0.2
+
+{
+    &quot;from&quot;: &quot;tools&quot;,
+    &quot;name&quot;: &quot;httpie&quot;
+}
+</code></pre>
+
+<p><strong>指定<code>-f</code>(<code>--form</code>)时以表单类型提交。</strong></p>
+
+<pre><code>$ http -f -v itopic.org from=tools name=httpie
+POST / HTTP/1.1
+Accept: */*
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Content-Length: 22
+Content-Type: application/x-www-form-urlencoded; charset=utf-8
+Host: itopic.org
+User-Agent: HTTPie/1.0.2
+
+from=tools&amp;name=httpie
+</code></pre>
+
+<h3 id="2-4-4-设置json数组">2.4.4 设置JSON数组</h3>
+
+<p>因为<code>http</code>默认以JSON格式传递，所以省去了显示<code>-j</code>(<code>--json</code>)指定。通过下面的方式可以指定一些简单的json格式。</p>
+
+<pre><code>$ http -v itopic.org from:='[&quot;app&quot;, &quot;web&quot;]' name=itopic show:=true
+POST / HTTP/1.1
+Accept: application/json, */*
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Content-Length: 56
+Content-Type: application/json
+Host: itopic.org
+User-Agent: HTTPie/1.0.2
+
+{
+    &quot;from&quot;: [
+        &quot;app&quot;,
+        &quot;web&quot;
+    ],
+    &quot;name&quot;: &quot;itopic&quot;,
+    &quot;show&quot;: true
+}
+</code></pre>
+
+<h1 id="三-curl请求">三、Curl请求</h1>
+
+<pre><code>$ curl -w &quot;@curl-format.txt&quot; -o /dev/null -s http://www.baidu.com
+              http: 200
+     time_namelookup: 0.001757s
+       time_redirect: 0.000000s
+        time_connect: 0.024540s
+     time_appconnect: 0.000000s
+    time_pretransfer: 0.024580s
+  time_starttransfer: 0.044848s
+          time_total: 0.045182s
+
+     size_download: 2381bytes
+      speed_download: 52911.000B/s
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-02.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-02.html">2016-02-04 21:28</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/常用软件.html">常用软件</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/lua-class.html">Lua实现类与继承</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/supervisor.html">Supervisor配置</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\常用软件\HTTP命令行客户端 - HTTPie.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\常用软件\HTTP命令行客户端 - HTTPie.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

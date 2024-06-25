@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python爬虫库 ( 3 ) - Requests</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python爬虫库 ( 3 ) - Requests</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-发送请求">一、发送请求</h1>
+
+<p>使用<code>Requests</code>发送网络请求非常简单。一开始要导入<code>Requests</code>模块：</p>
+
+<pre><code>&gt;&gt;&gt; import requests
+</code></pre>
+
+<p>然后，尝试获取某个网页。本例子中，我们来获取<code>Github</code>的公共时间线：</p>
+
+<h2 id="1-1-get请求">1.1 GET请求</h2>
+
+<pre><code>&gt;&gt;&gt; r = requests.get('https://api.github.com/events', params={})
+</code></pre>
+
+<p>现在，我们有一个名为<code>r</code>的<code>Response</code>对象。我们可以从这个对象中获取所有我们想要的信息。<code>Requests</code>简便的<code>API</code>意味着所有<code>HTTP</code>请求类型都是显而易见的。例如，你可以这样发送一个 <strong>HTTP POST</strong> 请求：</p>
+
+<h2 id="1-2-post请求">1.2 POST请求</h2>
+
+<pre><code>&gt;&gt;&gt; r = requests.post('http://httpbin.org/post', data = {'key':'value'})
+</code></pre>
+
+<p>漂亮，对吧？那么其他<code>HTTP</code>请求类型：<code>PUT</code>，<code>DELETE</code>，<code>HEAD</code>以及<code>OPTIONS</code>又是如何的呢？都是一样的简单：</p>
+
+<pre><code>&gt;&gt;&gt; r = requests.put('http://httpbin.org/put', data = {'key':'value'})
+&gt;&gt;&gt; r = requests.delete('http://httpbin.org/delete')
+&gt;&gt;&gt; r = requests.head('http://httpbin.org/get')
+&gt;&gt;&gt; r = requests.options('http://httpbin.org/get')
+</code></pre>
+
+<h1 id="二-传递url参数">二、传递URL参数</h1>
+
+<p>你也许经常想为<code>URL</code>的查询字符串(<code>query string</code>)传递某种数据。如果你是手工构建 <code>URL</code>，那么数据会以键/值对的形式置于<code>URL</code>中，跟在一个问号的后面。例如， <code>httpbin.org/get?key=val</code>。 <code>Requests</code>允许你使用<code>params</code>关键字参数，以一个字符串字典来提供这些参数。举例来说，如果你想传递<code>key1=value1</code>和<code>key2=value2</code>到 <code>httpbin.org/get</code>，那么你可以使用如下代码：</p>
+
+<pre><code>&gt;&gt;&gt; payload = {'key1': 'value1', 'key2': 'value2'}
+&gt;&gt;&gt; r = requests.get(&quot;http://httpbin.org/get&quot;, params=payload)
+</code></pre>
+
+<p>通过打印输出该<code>URL</code>，你能看到<code>URL</code>已被正确编码：</p>
+
+<pre><code>&gt;&gt;&gt; print(r.url)
+http://httpbin.org/get?key2=value2&amp;key1=value1
+</code></pre>
+
+<p>注意字典里值为<code>None</code>的键都不会被添加到<code>URL</code>的查询字符串里。你还可以将一个列表作为值传入：</p>
+
+<pre><code>&gt;&gt;&gt; payload = {'key1': 'value1', 'key2': ['value2', 'value3']}
+
+&gt;&gt;&gt; r = requests.get('http://httpbin.org/get', params=payload)
+&gt;&gt;&gt; print(r.url)
+http://httpbin.org/get?key1=value1&amp;key2=value2&amp;key2=value3
+</code></pre>
+
+<h1 id="三-响应内容">三、响应内容</h1>
+
+<p>我们能读取服务器响应的内容。再次以 GitHub 时间线为例：</p>
+
+<h2 id="3-1-响应内容">3.1 响应内容</h2>
+
+<pre><code>&gt;&gt;&gt; import requests
+&gt;&gt;&gt; r = requests.get('https://api.github.com/events')
+&gt;&gt;&gt; r.text
+u'[{&quot;repository&quot;:{&quot;open_issues&quot;:0,&quot;url&quot;:&quot;https://github.com/...
+</code></pre>
+
+<p><code>Requests</code>会自动解码来自服务器的内容。大多数<code>unicode</code>字符集都能被无缝地解码。</p>
+
+<p>请求发出后，<code>Requests</code>会基于<code>HTTP</code>头部对响应的编码作出有根据的推测。当你访问 <code>r.text</code>之时，<code>Requests</code>会使用其推测的文本编码。你可以找出<code>Requests</code>使用了什么编码，并且能够使用<code>r.encoding</code>属性来改变它：</p>
+
+<pre><code>&gt;&gt;&gt; r.encoding
+'utf-8'
+&gt;&gt;&gt; r.encoding = 'ISO-8859-1'
+</code></pre>
+
+<p>如果你改变了编码，每当你访问<code>r.text</code>，<code>Request</code>都将会使用<code>r.encoding</code>的新值。你可能希望在使用特殊逻辑计算出文本的编码的情况下来修改编码。比如<code>HTTP</code>和<code>XML</code>自身可以指定编码。这样的话，你应该使用<code>r.content</code>来找到编码，然后设置<code>r.encoding</code>为相应的编码。这样就能使用正确的编码解析<code>r.text</code>了。</p>
+
+<p>在你需要的情况下，<code>Requests</code>也可以使用定制的编码。如果你创建了自己的编码，并使用 <code>codecs</code>模块进行注册，你就可以轻松地使用这个解码器名称作为<code>r.encoding</code>的值， 然后由<code>Requests</code>来为你处理编码。</p>
+
+<h2 id="3-2-响应状态码">3.2 响应状态码</h2>
+
+<pre><code>&gt;&gt;&gt; r.status_code
+200
+</code></pre>
+
+<h1 id="四-请求头与响应头">四、请求头与响应头</h1>
+
+<h2 id="4-1-查看请求头">4.1 查看请求头</h2>
+
+<pre><code>&gt;&gt;&gt; r = requests.post('http://httpbin.org/post', data = {'key':'value'})
+&gt;&gt;&gt; r.request.headers
+{
+	'Content-Length': '9',
+	'Accept-Encoding': 'gzip, deflate',
+	'Accept': '*/*',
+	'User-Agent': 'python-requests/2.22.0',
+	'Connection': 'keep-alive',
+	'Content-Type': 'application/x-www-form-urlencoded'
+}
+&gt;&gt;&gt; r.request.body
+'key=value'
+</code></pre>
+
+<h2 id="4-2-查看返回头">4.2 查看返回头</h2>
+
+<pre><code>&gt;&gt;&gt; r.headers
+{
+	'Content-Length': '266',
+	'X-XSS-Protection': '1; mode=block',
+	'X-Content-Type-Options': 'nosniff',
+	'Content-Encoding': 'gzip',
+	'Server': 'nginx',
+	'Connection': 'keep-alive',
+	'Access-Control-Allow-Credentials': 'true',
+	'Date': 'Fri, 13 Sep 2019 12:44:56 GMT',
+	'Access-Control-Allow-Origin': '*',
+	'Referrer-Policy': 'no-referrer-when-downgrade',
+	'Content-Type': 'application/json',
+	'X-Frame-Options': 'DENY'
+}
+</code></pre>
+
+<h2 id="4-3-设置请求头">4.3 设置请求头</h2>
+
+<p>如果你想为请求添加 HTTP 头部，只要简单地传递一个 dict 给 headers 参数就可以了。</p>
+
+<pre><code>&gt;&gt;&gt; r = requests.get('http://httpbin.org', headers={&quot;User-Agent&quot;: &quot;my-app/0.0.1&quot;})
+&gt;&gt;&gt; r.request.headers
+{'Connection': 'keep-alive', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'User-Agent': 'my-app/0.0.1'}
+</code></pre>
+
+<h1 id="五-常用参数设置">五、常用参数设置</h1>
+
+<h2 id="5-1-超时设置">5.1 超时设置</h2>
+
+<p>为防止服务器不能及时响应，大部分发至外部服务器的请求都应该带着<code>timeout</code>参数。在默认情况下，除非显式指定了<code>timeout</code>值，<code>requests</code>是不会自动进行超时处理的。如果没有<code>timeout</code>，你的代码可能会挂起若干分钟甚至更长时间。</p>
+
+<p>连接超时指的是在你的客户端实现到远端机器端口的连接时（对应的是<code>connect()</code>_），<code>Request</code> 会等待的秒数。一个很好的实践方法是把连接超时设为比 3 的倍数略大的一个数值，因为 TCP 数据包重传窗口 (TCP packet retransmission window) 的默认大小是 3。</p>
+
+<p>一旦你的客户端连接到了服务器并且发送了<code>HTTP</code>请求，读取超时指的就是客户端等待服务器发送请求的时间。（特定地，它指的是客户端要等待服务器发送字节之间的时间。在<code>99.9%</code>的情况下这指的是服务器发送第一个字节之前的时间）。</p>
+
+<p>如果你制订了一个单一的值作为<code>timeout</code>，如下所示：</p>
+
+<pre><code>r = requests.get('https://github.com', timeout=5)
+</code></pre>
+
+<p>这一<code>timeout</code>值将会用作<code>connect</code>和<code>read</code>二者的<code>timeout</code>。如果要分别制定，就传入一个元组：</p>
+
+<pre><code>r = requests.get('https://github.com', timeout=(3.05, 27))
+</code></pre>
+
+<p>如果远端服务器很慢，你可以让<code>Request</code>永远等待，传入一个<code>None</code>作为<code>timeout</code>值，然后就冲咖啡去吧。</p>
+
+<pre><code>r = requests.get('https://github.com', timeout=None)
+</code></pre>
+
+<h2 id="5-2-代理设置">5.2 代理设置</h2>
+
+<p>如果需要使用代理，你可以通过为任意请求方法提供<code>proxies</code>参数来配置单个请求:</p>
+
+<pre><code>import requests
+
+proxies = {
+  &quot;http&quot;: &quot;http://10.10.1.10:3128&quot;,
+  &quot;https&quot;: &quot;http://10.10.1.10:1080&quot;,
+}
+
+requests.get(&quot;http://example.org&quot;, proxies=proxies)
+</code></pre>
+
+<p>你也可以通过环境变量<code>HTTP_PROXY</code>和<code>HTTPS_PROXY</code>来配置代理。</p>
+
+<pre><code>$ export HTTP_PROXY=&quot;http://10.10.1.10:3128&quot;
+$ export HTTPS_PROXY=&quot;http://10.10.1.10:1080&quot;
+
+$ python
+&gt;&gt;&gt; import requests
+&gt;&gt;&gt; requests.get(&quot;http://example.org&quot;)
+</code></pre>
+
+<p>若你的代理需要使用<code>HTTP Basic Auth</code>，可以使用 <code>http://user:password@host/</code> 语法：</p>
+
+<pre><code>proxies = {
+    &quot;http&quot;: &quot;http://user:pass@10.10.1.10:3128/&quot;,
+}
+</code></pre>
+
+<p>要为某个特定的连接方式或者主机设置代理，使用<code>scheme://hostname</code>作为<code>key</code>， 它会针对指定的主机和连接方式进行匹配。</p>
+
+<pre><code>proxies = {'http://10.20.1.128': 'http://10.10.1.10:5323'}
+</code></pre>
+
+<p>注意，代理<code>URL</code>必须包含连接方式。</p>
+
+<p>文档：<a href="https://2.python-requests.org//zh_CN/latest/user/quickstart.html">https://2.python-requests.org//zh_CN/latest/user/quickstart.html</a></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2017-04.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2017-04.html">2017-04-10 23:11</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/爬虫.html">爬虫</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/lxml.html">Python爬虫库 ( 2 ) - lxml</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/selenium.html">Python爬虫库 ( 4 ) - Selenium</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python爬虫库 ( 3 ) - Requests.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python爬虫库 ( 3 ) - Requests.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

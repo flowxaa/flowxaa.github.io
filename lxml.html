@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python爬虫库 ( 2 ) - lxml</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python爬虫库 ( 2 ) - lxml</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>lxml 是一个HTML/XML的解析器，主要的功能是如何解析和提取 HTML/XML 数据。</p>
+
+<h1 id="一-安装">一、安装</h1>
+
+<p><code>pip install lxml</code></p>
+
+<p>安装失败可指定镜像：</p>
+
+<p><code>pip install --index https://pypi.mirrors.ustc.edu.cn/simple/ lxml</code></p>
+
+<h1 id="二-lxml结构">二、lxml结构</h1>
+
+<ul>
+<li>Element
+
+<ul>
+<li>Property
+
+<ul>
+<li>.attrib</li>
+<li>.base</li>
+<li>.sourceline</li>
+<li>.tag</li>
+<li>.text</li>
+<li>.prefix</li>
+<li>.nsmap</li>
+</ul></li>
+<li>Method
+
+<ul>
+<li>xpath()</li>
+<li>getparent()</li>
+<li>getprevious()</li>
+<li>getnext()</li>
+<li>getchildren()</li>
+<li>getroottree()</li>
+<li>find()</li>
+<li>findall()</li>
+<li>findtext()</li>
+<li>clear()</li>
+<li>get()</li>
+<li>items()</li>
+<li>keys()</li>
+<li>values()</li>
+<li>set()</li>
+</ul></li>
+</ul></li>
+<li>etree
+
+<ul>
+<li>etree.fromstring()</li>
+<li>etree.tostring()</li>
+<li>etree.parse()</li>
+</ul></li>
+<li>html
+
+<ul>
+<li>html.fromstring()</li>
+<li>html.tostring()</li>
+</ul></li>
+</ul>
+
+<h1 id="三-生成xml">三、生成xml</h1>
+
+<pre><code>#! /usr/local/env python
+# coding: utf-8
+
+from lxml import etree
+
+
+# 创建一个节点
+root = etree.Element(&quot;Service_SearchHotel&quot;, nsmap={
+    'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+})
+
+
+# 往节点里添加元素
+xml_request = etree.SubElement(root, &quot;SearchHotel_Request&quot;, Language=&quot;en&quot;, Citizenship=&quot;zh&quot;)
+
+# 添加元素并设置内容
+etree.SubElement(xml_request, &quot;HotelId&quot;).text = &quot;10086&quot;
+etree.SubElement(xml_request, &quot;Currency&quot;).text = &quot;CNY&quot;
+
+# 也可以通过append方式设置
+avail = etree.Element(&quot;Avail&quot;)
+avail.text = &quot;1&quot;
+xml_request.append(avail)
+
+# 添加元素并设置属性
+p = etree.SubElement(xml_request, &quot;Period&quot;, Checkin=&quot;2018-08-08&quot;)
+# 另一种方式设置属性
+p.set(&quot;Checkout&quot;, &quot;2018-08-09&quot;)
+
+xml_room = etree.SubElement(xml_request, &quot;RoomInfo&quot;)
+# 还有一种添加属性的方法：attrib
+attribs = {&quot;Adult&quot;: &quot;2&quot;, &quot;Child&quot;: &quot;1&quot;}
+etree.SubElement(xml_room, &quot;Room&quot;, attrib=attribs, RoomType=&quot;Twin&quot;, RoomNum=&quot;1&quot;)
+etree.SubElement(xml_room, &quot;Room&quot;, attrib=attribs, RoomType=&quot;Double&quot;, RoomNum=&quot;2&quot;)
+
+# 可查看生成的XML文件
+x = etree.tostring(root, pretty_print=True)
+print(x)
+
+# 存储到文件
+tree = etree.ElementTree(root)
+tree.write('search.xml', pretty_print=True, xml_declaration=True, encoding='utf-8')
+</code></pre>
+
+<pre><code>&lt;Service_SearchHotel xmlns:SOAP-ENV=&quot;http://schemas.xmlsoap.org/soap/envelope/&quot;&gt;
+  &lt;SearchHotel_Request Citizenship=&quot;zh&quot; Language=&quot;en&quot;&gt;
+    &lt;HotelId&gt;10086&lt;/HotelId&gt;
+    &lt;Currency&gt;CNY&lt;/Currency&gt;
+    &lt;Avail&gt;1&lt;/Avail&gt;
+    &lt;Period Checkin=&quot;2018-08-08&quot; Checkout=&quot;2018-08-09&quot;/&gt;
+    &lt;RoomInfo&gt;
+      &lt;Room RoomNum=&quot;1&quot; RoomType=&quot;Twin&quot; Adult=&quot;2&quot; Child=&quot;1&quot;/&gt;
+      &lt;Room RoomNum=&quot;2&quot; RoomType=&quot;Double&quot; Adult=&quot;2&quot; Child=&quot;1&quot;/&gt;
+    &lt;/RoomInfo&gt;
+  &lt;/SearchHotel_Request&gt;
+&lt;/Service_SearchHotel&gt;
+</code></pre>
+
+<h1 id="四-解析xml">四、解析xml</h1>
+
+<pre><code>#! /usr/local/env python
+# coding: utf-8
+
+from lxml import etree
+
+# 从文件加载xml文件
+xml = etree.parse('search.xml')
+
+# 从字符串加载xml
+# x = etree.fromstring(etree.tostring(xml))
+
+root = xml.getroot()
+print(type(root), root.tag, root.getchildren()[0].get('Language'))
+print(&quot;\n&quot;)
+
+# 按列表方式访问root下第一个节点（SearchHotel_Request）
+for x in root[0]:
+    print(x.tag, x.text, x.keys(), x.items())
+
+print(&quot;\n&quot;)
+
+# 通过xpath遍历Room节点
+for x in root.xpath('//SearchHotel_Request/RoomInfo/Room'):
+    print(x.tag, x.text, x.keys(), x.items())
+</code></pre>
+
+<pre><code>(&lt;type 'lxml.etree._Element'&gt;, 'Service_SearchHotel', 'en')
+
+
+('HotelId', '10086', [], [])
+('Currency', 'CNY', [], [])
+('Avail', '1', [], [])
+('Period', None, ['Checkin', 'Checkout'], [('Checkin', '2018-08-08'), ('Checkout', '2018-08-09')])
+('RoomInfo', '\n      ', [], [])
+
+
+('Room', None, ['RoomNum', 'RoomType', 'Adult', 'Child'], [('RoomNum', '1'), ('RoomType', 'Twin'), ('Adult', '2'), ('Child', '1')])
+('Room', None, ['RoomNum', 'RoomType', 'Adult', 'Child'], [('RoomNum', '2'), ('RoomType', 'Double'), ('Adult', '2'), ('Child', '1')])
+</code></pre>
+
+<h1 id="五-解析html">五、解析html</h1>
+
+<pre><code>#! /usr/local/env python
+# coding: utf-8
+
+from lxml import html
+
+s = '''
+&lt;div id=&quot;article&quot;&gt;
+    &lt;ul id=&quot;article-list&quot;&gt;
+        &lt;li class=&quot;selected&quot;&gt;item-1&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#url2&quot;&gt;item-2&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#url3&quot;&gt;&lt;img src=&quot;#img3&quot;/&gt;item-3&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+&lt;/div&gt;
+'''
+
+x = html.fromstring(s)
+print(html.tostring(x))
+
+# 打印text，过滤掉A标签内的其他非文本标签
+for x in html.fromstring(s).xpath('//ul[@id=&quot;article-list&quot;]/li'):
+    print(x.text_content())
+
+
+# 获取a标签的标题和超链接地址，text可调为text_content()
+for x in html.fromstring(s).xpath('//a'):
+    print(x.text, x.attrib.get('href'))
+
+# 获取class为selected的li的文本内容，结果为数组
+print(html.fromstring(s).xpath('//li[@class=&quot;selected&quot;]/text()'))
+
+
+# 移除元素后重新组成html
+c = ''
+for x in html.fromstring(s).xpath('//ul'):
+    for sv in x.xpath('./li[@class=&quot;selected&quot;]'):
+        x.remove(sv)
+    c += html.tostring(x, pretty_print=True, encoding='unicode')
+print(c)
+</code></pre>
+
+<h1 id="参考文档">参考文档</h1>
+
+<ul>
+<li>Python读写XML文档(lxml方式)(<a href="http://yshblog.com/blog/151">http://yshblog.com/blog/151</a>)</li>
+<li>lxml简明教程(<a href="https://www.cnblogs.com/ospider/p/5911339.html">https://www.cnblogs.com/ospider/p/5911339.html</a>)</li>
+<li>lxml - 用Python解析XML和HTML(<a href="https://www.jianshu.com/p/282fbf3d0a0c">https://www.jianshu.com/p/282fbf3d0a0c</a>)</li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2017-03.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2017-03.html">2017-03-12 20:14</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/爬虫.html">爬虫</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/xpath.html">Python爬虫库 ( 1 ) - XPath</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/requests.html">Python爬虫库 ( 3 ) - Requests</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python爬虫库 ( 2 ) - lxml.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python爬虫库 ( 2 ) - lxml.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes基础 ( 1 ) - 环境搭建及概念说明</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes基础 ( 1 ) - 环境搭建及概念说明</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a>
+<ul>
+<li><a href="#1-1-kubernetes是什么">1.1 Kubernetes是什么？</a></li>
+<li><a href="#1-2-kubernetes设计架构">1.2 Kubernetes设计架构</a></li>
+</ul></li>
+<li><a href="#二-安装k8s">二、安装K8s</a>
+<ul>
+<li><a href="#2-1-下载依赖镜像">2.1 下载依赖镜像</a></li>
+<li><a href="#2-2-启用kuberenetes">2.2 启用Kuberenetes</a></li>
+<li><a href="#2-3-安装dashboard">2.3 安装Dashboard</a></li>
+</ul></li>
+<li><a href="#三-尝试部署镜像">三、尝试部署镜像</a>
+<ul>
+<li><a href="#3-1-创建deployment">3.1 创建deployment</a></li>
+<li><a href="#3-2-创建service">3.2 创建service</a></li>
+<li><a href="#3-3-扩容-缩容">3.3 扩容 / 缩容</a></li>
+</ul></li>
+<li><a href="#四-节点说明">四、节点说明</a>
+<ul>
+<li><a href="#4-1-master">4.1 Master</a></li>
+<li><a href="#4-2-node">4.2 Node</a></li>
+<li><a href="#4-3-pod">4.3 Pod</a></li>
+</ul></li>
+<li><a href="#五-概念说明-master">五、概念说明 - Master</a>
+<ul>
+<li><a href="#5-1-kube-apiserver">5.1 kube-apiserver</a></li>
+<li><a href="#5-2-kube-controller-manager">5.2 kube-controller-manager</a></li>
+<li><a href="#5-3-kube-scheduler">5.3 kube-scheduler</a></li>
+<li><a href="#5-4-etcd">5.4 etcd</a></li>
+</ul></li>
+<li><a href="#六-概念说明-node">六、概念说明 - Node</a>
+<ul>
+<li><a href="#6-1-kubelet">6.1 kubelet</a></li>
+<li><a href="#6-2-kube-proxy">6.2 kube-proxy</a></li>
+</ul></li>
+<li><a href="#七-小结">七、小结</a></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<h2 id="1-1-kubernetes是什么">1.1 Kubernetes是什么？</h2>
+
+<p><code>Kubernetes</code>的名字来自希腊语，意思是“舵手” 或 “领航员”。<code>K8s</code>是将8个字母<code>ubernete</code>替换为<code>8</code>的缩写，也就是仅保留了头尾2个字母（<code>k</code>和<code>s</code>），中间的8个字母都去掉了，用<code>8</code>代替。</p>
+
+<p><code>Kubernetes</code>是容器集群管理系统，是一个开源的平台，可以实现容器集群的自动化部署、自动扩缩容、维护等功能。</p>
+
+<p>通过<code>Kubernetes</code>你可以：</p>
+
+<ul>
+<li>快速部署应用</li>
+<li>快速扩展应用</li>
+<li>无缝对接新的应用功能</li>
+<li>节省资源，优化硬件资源的使用</li>
+</ul>
+
+<p><strong>Kubernetes 特点</strong>：</p>
+
+<ul>
+<li><strong>可移植</strong>: 支持公有云，私有云，混合云，多重云（multi-cloud）</li>
+<li><strong>可扩展</strong>: 模块化, 插件化, 可挂载, 可组合</li>
+<li><strong>自动化</strong>: 自动部署，自动重启，自动复制，自动伸缩/扩展</li>
+</ul>
+
+<p><code>Kubernetes</code>是<code>Google</code>2014年创建管理的，是<code>Google</code>10多年大规模容器管理技术<code>Borg</code>的开源版本。</p>
+
+<h2 id="1-2-kubernetes设计架构">1.2 Kubernetes设计架构</h2>
+
+<p><code>Kubernetes</code>集群包含有节点代理<code>kubelet</code>和<code>Master</code>组件(<code>APIs</code>, <code>scheduler</code>, <code>etc</code>)，一切都基于分布式的存储系统。下面这张图是<code>Kubernetes</code>的架构图 <a href="#refer"><sup>[1]</sup></a>。</p>
+
+<p><img src="../../static/uploads/k8s-cluster.png" alt="" /></p>
+
+<p>来看这张图，左侧是<code>Master</code>节点，右边是<code>Node</code>节点。</p>
+
+<p><strong><code>Master</code>节点上有：</strong></p>
+
+<ul>
+<li><code>API Server</code>：提供了资源操作的唯一入口，并提供认证、授权、访问控制、API注册和发现等机制；</li>
+<li><code>controller-manager</code>：负责维护集群的状态，比如故障检测、自动扩展、滚动更新等；</li>
+<li><code>scheduler</code>：负责资源的调度，按照预定的调度策略将<code>Pod</code>调度到相应的机器上；</li>
+<li><code>Etcd</code>：保存了整个集群的状态；</li>
+</ul>
+
+<p><strong><code>Node</code>节点上有：</strong></p>
+
+<ul>
+<li><code>kubelet</code>：负责维护容器的生命周期，同时也负责<code>Volume（CVI）</code>和网络（<code>CNI</code>）的管理；</li>
+<li><code>kube-proxy</code>：负责为<code>Service</code>提供<code>cluster</code>内部的服务发现和负载均衡；</li>
+<li><code>Pod</code>：<code>Kubernetes</code>中操作的基本单元，一个<code>Pod</code>下可以有多个容器
+
+<ul>
+<li><code>Container</code>：<code>Pod</code>下的容器，可以由<code>Dokcer</code>镜像启动。</li>
+</ul></li>
+</ul>
+
+<p><code>kubectl</code>命令操作主节点，主节点要操作<code>Node</code>节点则通过和<code>Node</code>节点上的<code>kubelet</code>交互实现，<code>Client</code>访问则通过防火墙规则访问到<code>Node</code>节点里的特定<code>Pod</code>。</p>
+
+<p>了解到这里后可能就开始懵圈了，好多文章里还会看到<code>Deployment</code>、<code>Service</code>、<code>ReplicaSets/Replication Controller</code>等，一堆概念容易混淆。所以接下来我们先忽略概念，看怎么在个人电脑上部署个k8s环境，操作一遍之后再来梳理概念和交互。</p>
+
+<h1 id="二-安装k8s">二、安装K8s</h1>
+
+<p>通过<code>Docker</code>方式部署比较简单，打开已搭建好的<code>Docker Dashboard</code>界面，设置里有个<code>Kubernetes</code>，默认是没有勾选的，但这里直接勾选应用后卡死了，大概是因为墙的原因，有些镜像无法下载，所以在点击之前需要先手动下载镜像。</p>
+
+<h2 id="2-1-下载依赖镜像">2.1 下载依赖镜像</h2>
+
+<p>参考 <code>gotok8s</code> <a href="#refer"><sup>[2]</sup></a> 的安装方法：</p>
+
+<pre><code>$ git clone git@github.com:gotok8s/k8s-docker-desktop-for-mac.git
+$ ./load_images.sh
+</code></pre>
+
+<p>脚本比较简单，用后面的镜像替换前面的镜像，替换完成之后重新打TAG还原。</p>
+
+<pre><code>$ cat image_list
+k8s.gcr.io/kube-proxy:v1.16.5=gotok8s/kube-proxy:v1.16.5
+k8s.gcr.io/kube-controller-manager:v1.16.5=gotok8s/kube-controller-manager:v1.16.5
+k8s.gcr.io/kube-scheduler:v1.16.5=gotok8s/kube-scheduler:v1.16.5
+k8s.gcr.io/kube-apiserver:v1.16.5=gotok8s/kube-apiserver:v1.16.5
+k8s.gcr.io/coredns:1.6.2=gotok8s/coredns:1.6.2
+k8s.gcr.io/pause:3.1=gotok8s/pause:3.1
+k8s.gcr.io/etcd:3.3.15-0=gotok8s/etcd:3.3.15-0
+k8s.gcr.io/kubernetes-dashboard-amd64=gotok8s/kubernetes-dashboard-amd64:v1.10.1
+</code></pre>
+
+<h2 id="2-2-启用kuberenetes">2.2 启用Kuberenetes</h2>
+
+<p>打开Docker，启用<code>Kubernetes</code>，应用后若正常则可以看到左下角有2个<code>running</code>状态。</p>
+
+<p><img src="../../static/uploads/docker-setting.png" alt="" /></p>
+
+<p>命令行敲<code>kubectl</code>就可以输出信息了。</p>
+
+<h2 id="2-3-安装dashboard">2.3 安装Dashboard</h2>
+
+<p><code>Dashboard</code>是可选组件，部署<code>Kubernetes Dashboard</code>：</p>
+
+<pre><code>$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
+
+# 开启本机访问代理
+$ kubectl proxy
+</code></pre>
+
+<p>创建<code>Dashboard</code>管理员用户并用<code>token</code>登陆</p>
+
+<pre><code># 创建 ServiceAccount kubernetes-dashboard-admin 并绑定集群管理员权限
+$ kubectl apply -f https://raw.githubusercontent.com/gotok8s/gotok8s/master/dashboard-admin.yaml
+
+# 获取登陆 token
+$ kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep kubernetes-dashboard-admin | awk '{print $1}')
+</code></pre>
+
+<p>通过下面的连接访问<code>Dashboard</code>:</p>
+
+<p><code>http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/</code></p>
+
+<p>输入上一步获取的<code>token</code>, 验证并登陆。到这里环境就装好了。</p>
+
+<h1 id="三-尝试部署镜像">三、尝试部署镜像</h1>
+
+<p>一般可以通过<code>YAML</code>文件进行部署，这里先尝试走通流程，类似<code>docker run</code>的用法让容器先跑起来。整个过程只需要执行2条命令即可。</p>
+
+<h2 id="3-1-创建deployment">3.1 创建deployment</h2>
+
+<p>首先，执行第一条命令：</p>
+
+<pre><code>$ kubectl run itopic --image=pengbotao/itopic.go:alpine --replicas=3 --port=8001
+</code></pre>
+
+<p>说明：使用的是我们前面用<code>docker</code>构建的镜像，容器使用的是8001端口，启动3个副本。操作<code>run</code>之后就创建好了<code>deployment</code>、<code>rs</code>和<code>pod</code>，可以查看相关信息：</p>
+
+<p><strong>查看Node</strong>：</p>
+
+<pre><code>$ kubectl get node
+NAME             STATUS   ROLES    AGE     VERSION
+docker-desktop   Ready    master   2d21h   v1.16.6-beta.0
+</code></pre>
+
+<p><strong>查看deployment、rs和pod</strong></p>
+
+<pre><code>$ kubectl get deployment
+NAME     READY   UP-TO-DATE   AVAILABLE   AGE
+itopic   3/3     3            3           16s
+
+$ kubectl get rs
+NAME                DESIRED   CURRENT   READY   AGE
+itopic-6f9dd4f4cd   3         3         3       21s
+
+$ kubectl get pod
+NAME                      READY   STATUS    RESTARTS   AGE
+itopic-6f9dd4f4cd-2q2xp   1/1     Running   0          23s
+itopic-6f9dd4f4cd-7pj8f   1/1     Running   0          23s
+itopic-6f9dd4f4cd-vfdx9   1/1     Running   0          23s
+</code></pre>
+
+<p><strong>查看pod详情</strong></p>
+
+<pre><code>$ kubectl describe pod itopic-6f9dd4f4cd-2q2xp
+Name:         itopic-6f9dd4f4cd-2q2xp
+Namespace:    default
+Priority:     0
+Node:         docker-desktop/192.168.65.3
+Start Time:   Thu, 27 Aug 2020 13:57:42 +0800
+Labels:       pod-template-hash=6f9dd4f4cd
+              run=itopic
+Annotations:  &lt;none&gt;
+Status:       Running
+IP:           10.1.0.16
+IPs:
+  IP:           10.1.0.16
+Controlled By:  ReplicaSet/itopic-6f9dd4f4cd
+Containers:
+  itopic:
+    Container ID:   docker://3896614a1b1f3f2d11f709cfad56a2579769c51fb212eb2402e0dea668d95584
+    Image:          pengbotao/itopic.go:alpine
+    Image ID:       docker-pullable://pengbotao/itopic.go@sha256:1a1a98ffe435e34da61956be22eb61382eb5732120c4e216922f90ace0ad504b
+    Port:           8001/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 27 Aug 2020 13:57:43 +0800
+    Ready:          True
+    Restart Count:  0
+    Environment:    &lt;none&gt;
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-lmjrh (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-lmjrh:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-lmjrh
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  &lt;none&gt;
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:          &lt;none&gt;
+</code></pre>
+
+<p><strong>也可以进入容器</strong></p>
+
+<pre><code>$ kubectl exec -it itopic-6f9dd4f4cd-2q2xp /bin/sh
+/www/itopic.go #
+</code></pre>
+
+<h2 id="3-2-创建service">3.2 创建service</h2>
+
+<p>到这里容器已经建好了，但是还无法从外部访问。接下来，执行第二条命令：</p>
+
+<pre><code>$ kubectl expose deployment itopic --type=LoadBalancer --port=38001 --target-port=8001 
+</code></pre>
+
+<p><strong>查看service</strong></p>
+
+<pre><code>$ kubectl get service
+NAME         TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)           AGE
+itopic       LoadBalancer   10.100.230.169   localhost     38001:31234/TCP   26s
+kubernetes   ClusterIP      10.96.0.1        &lt;none&gt;        443/TCP           2d20h
+
+
+$ kubectl describe service itopic
+Name:                     itopic
+Namespace:                default
+Labels:                   run=itopic
+Annotations:              &lt;none&gt;
+Selector:                 run=itopic
+Type:                     LoadBalancer
+IP:                       10.100.230.169
+LoadBalancer Ingress:     localhost
+Port:                     &lt;unset&gt;  38001/TCP
+TargetPort:               8001/TCP
+NodePort:                 &lt;unset&gt;  31234/TCP
+Endpoints:                10.1.0.15:8001,10.1.0.16:8001,10.1.0.17:8001
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   &lt;none&gt;
+</code></pre>
+
+<p>这个时候就可以通过<code>http://localhost:38001</code>访问了。</p>
+
+<blockquote>
+<p>注：Mac DockerDesktop环境下type指定其他没有走通，正常指定<code>NodePort</code>应该可以。</p>
+</blockquote>
+
+<h2 id="3-3-扩容-缩容">3.3 扩容 / 缩容</h2>
+
+<p>通过调整副本数量可以进行扩容与缩容。</p>
+
+<pre><code>$ kubectl scale --replicas=3 deploy/itopic
+
+$ kubectl get pods
+NAME                      READY   STATUS    RESTARTS   AGE
+itopic-6f9dd4f4cd-2q2xp   1/1     Running   0          38m
+itopic-6f9dd4f4cd-7pj8f   1/1     Running   0          38m
+itopic-6f9dd4f4cd-k56dl   1/1     Running   0          35m
+itopic-6f9dd4f4cd-lnzpq   1/1     Running   0          35m
+itopic-6f9dd4f4cd-vfdx9   1/1     Running   0          38m
+</code></pre>
+
+<p>如果要删除<code>deployment</code>和<code>service</code>:</p>
+
+<pre><code>$ kubectl delete deployment,service itopic
+</code></pre>
+
+<p>到这里一个简单的镜像通过2条<code>k8s</code>命令就部署好了，来看看<code>Dashboard</code>的展示情况：</p>
+
+<p><img src="../../static/uploads/Kubernetes-Dashboard.png" alt="" /></p>
+
+<p>从演示上使用到了<code>Deployment</code>、<code>ReplicaSet</code>、<code>Pod</code>、<code>Service</code>，从<code>Dashboard</code>左侧可以看到更多的名词，接写来对<code>k8s</code>的基础架构做一些描述。</p>
+
+<h1 id="四-节点说明">四、节点说明</h1>
+
+<h2 id="4-1-master">4.1 Master</h2>
+
+<p>集群的控制节点，负责整个集群的管理和控制，<code>kubernetes</code>的所有的命令基本都是发给<code>Master</code>，由它来负责具体的执行过程，平常执行的操作命令基本都是在<code>Master</code>上执行。</p>
+
+<p><strong>Master</strong>的组件：</p>
+
+<ul>
+<li><code>kube-apiserver</code>：资源增删改查的入口</li>
+<li><code>kube-controller-manager</code>：资源对象的大总管</li>
+<li><code>kube-scheduler</code>：负责资源调度（<code>Pod</code>调度）</li>
+<li><code>etcd Server</code>：<code>kubernetes</code>的所有的资源对象的数据保存在<code>etcd</code>中。</li>
+</ul>
+
+<h2 id="4-2-node">4.2 Node</h2>
+
+<p><code>Node</code>是集群的工作负载节点，默认情况<code>kubelet</code>会向<code>Master</code>注册自己，一旦<code>Node</code>被纳入集群管理范围，<code>kubelet</code>会定时向<code>Master</code>汇报自身的情报，包括操作系统，<code>Docker</code>版本，机器资源情况等。</p>
+
+<p>如果<code>Node</code>超过指定时间不上报信息，会被<code>Master</code>判断为“失联”，标记为<code>Not Ready</code>，随后<code>Master</code>会触发<code>Pod</code>转移。</p>
+
+<p><strong>Node</strong>的组件：</p>
+
+<ul>
+<li><code>kubelet</code>：<code>Pod</code>的管家，与<code>Master</code>通信</li>
+<li><code>kube-proxy</code>：实现<code>kubernetes Service</code>的通信与负载均衡机制的重要组件</li>
+<li><code>Docker</code>：容器</li>
+</ul>
+
+<h2 id="4-3-pod">4.3 Pod</h2>
+
+<p><code>Pod</code>是<code>Kubernetes</code>中操作的基本单元，一个<code>Pod</code>下可以有多个容器。每个<code>Pod</code>中都有个根容器(<code>Pause容器</code>)，<code>Pause</code>容器的状态代表整个容器组的状态，其他业务容器共享<code>Pause</code>的<code>IP</code>，即<code>Pod IP</code>，共享<code>Pause</code>挂载的<code>Volume</code>，这样简化了同个<code>Pod中</code>不同容器之间的网络问题和文件共享问题。</p>
+
+<ol>
+<li><code>Kubernetes</code>集群中，同宿主机的或不同宿主机的<code>Pod</code>之间要求能够TCP/IP直接通信，因此采用虚拟二层网络技术来实现，例如<code>Flannel</code>，<code>Openvswitch(OVS)</code>等，这样在同个集群中，不同的宿主机的Pod IP为不同IP段的IP，集群中的所有Pod IP都是唯一的，<strong>不同Pod之间可以直接通信</strong>。</li>
+<li><code>Pod</code>有两种类型：<code>普通Pod</code>和<code>静态Pod</code>。<code>静态Pod</code>即不通过<code>K8S</code>调度和创建，直接在某个具体的Node机器上通过具体的文件来启动。<code>普通Pod</code>则是由<code>K8S</code>创建、调度，同时数据存放在<code>ETCD</code>中。</li>
+<li><code>Pod IP</code>和具体的容器端口（<code>ContainnerPort</code>）组成一个具体的通信地址，即<code>Endpoint</code>。一个<code>Pod</code>中可以存在多个容器，可以有多个端口，<code>Pod IP</code>一样，即有多个<code>Endpoint</code>。</li>
+<li><code>Pod Volume</code>是定义在<code>Pod</code>之上，被各个容器挂载到自己的文件系统中，可以用分布式文件系统实现后端存储功能。</li>
+<li><code>Pod</code>中的<code>Event</code>事件可以用来排查问题，可以通过<code>kubectl describe pod xxx</code>来查看对应的事件。</li>
+<li>每个<code>Pod</code>可以对其能使用的服务器上的计算资源设置限额，一般为<code>CPU</code>和<code>Memory</code>。<code>K8S</code>中一般将千分之一个的<code>CPU</code>配置作为最小单位，用<code>m</code>表示，是一个绝对值，即<code>100m</code>对于一个Core的机器还是48个<code>Core</code>的机器都是一样的大小。<code>Memory</code>配额也是个绝对值，单位为内存字节数。</li>
+<li>资源配额的两个参数
+
+<ul>
+<li><code>Requests</code>：该资源的最小申请量，系统必须满足要求。</li>
+<li><code>Limits</code>：该资源最大允许使用量，当超过该量，K8S会kill并重启Pod。</li>
+</ul></li>
+</ol>
+
+<p>这几个概念应该还比较好理解。</p>
+
+<ul>
+<li>通过<code>Master</code>控制各<code>Node</code>节点</li>
+<li>操作<code>Node</code>节点实现节点上<code>Pod</code>的创建与管理</li>
+<li>客户访问<code>Node</code>节点上<code>Pod</code>提供的服务</li>
+</ul>
+
+<p>通过查看<code>kube-system</code>名称空间下的pod可以看到：</p>
+
+<pre><code>$ kubectl get pod -n kube-system
+NAME                                     READY   STATUS    RESTARTS   AGE
+coredns-5644d7b6d9-5tjhf                 1/1     Running   0          29d
+coredns-5644d7b6d9-mjw4w                 1/1     Running   0          29d
+etcd-docker-desktop                      1/1     Running   0          29d
+kube-apiserver-docker-desktop            1/1     Running   0          29d
+kube-controller-manager-docker-desktop   1/1     Running   0          29d
+kube-proxy-db9g7                         1/1     Running   0          29d
+kube-scheduler-docker-desktop            1/1     Running   0          29d
+storage-provisioner                      1/1     Running   1          29d
+vpnkit-controller                        1/1     Running   0          29d
+</code></pre>
+
+<h1 id="五-概念说明-master">五、概念说明 - Master</h1>
+
+<h2 id="5-1-kube-apiserver">5.1 kube-apiserver</h2>
+
+<p><code>k8s API Server</code>提供了<code>k8s</code>各类资源对象（<code>pod</code>,<code>RC</code>,<code>Service</code>等）的增删改查及<code>watch</code>等<code>HTTP Rest</code>接口，是整个系统的数据总线和数据中心。<code>kubernetes API Server</code>的功能： <a href="#refer"><sup>[4]</sup></a></p>
+
+<ol>
+<li>提供了集群管理的REST API接口(包括认证授权、数据校验以及集群状态变更)；</li>
+<li>提供其他模块之间的数据交互和通信的枢纽（其他模块通过API Server查询或修改数据，只有API Server才直接操作etcd）;</li>
+<li>是资源配额控制的入口；</li>
+<li>拥有完备的集群安全机制.</li>
+</ol>
+
+<h2 id="5-2-kube-controller-manager">5.2 kube-controller-manager</h2>
+
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>控制器</th>
+<th>说明</th>
+<th>应用场景</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>1</td>
+<td>Deployment</td>
+<td>部署无状态应用</td>
+<td>Web应用</td>
+</tr>
+
+<tr>
+<td>2</td>
+<td>StatefulSet</td>
+<td>部署有状态应用</td>
+<td>数据库</td>
+</tr>
+
+<tr>
+<td>3</td>
+<td>DaemonSet</td>
+<td>在每一个Node上面运行一个Pod；新加入的Node也同样会自动运行一个Pod</td>
+<td>Agent</td>
+</tr>
+
+<tr>
+<td>4</td>
+<td>Job/CronJob</td>
+<td>一次性任务/周期任务</td>
+<td>脚本、备份</td>
+</tr>
+
+<tr>
+<td>5</td>
+<td>ReplicaSet<br />ReplicationController</td>
+<td>控制容器应用的副本数量</td>
+<td></td>
+</tr>
+
+<tr>
+<td>6</td>
+<td>HPA</td>
+<td>Pod水平自动缩放</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>5.2.1. 关于无状态与有状态的说明：</strong></p>
+
+<ul>
+<li>无状态服务
+
+<ul>
+<li>是指该服务运行的实例不会在本地存储需要持久化的数据，并且多个实例对于同一个请求响应的结果是完全一致的。</li>
+<li>多个实例可以共享相同的持久化数据。例如：nginx实例，tomcat实例等</li>
+<li>相关的<code>k8s</code>资源有：<code>ReplicaSet</code>、<code>ReplicationController</code>、<code>Deployment</code>等，由于是无状态服务，所以这些控制器创建的pod序号都是随机值。并且在缩容的时候并不会明确缩容某一个pod，而是随机的，因为所有实例得到的返回值都是一样，所以缩容任何一个<code>pod</code>都可以。</li>
+</ul></li>
+<li>有状态服务
+
+<ul>
+<li>需要数据存储功能的服务、或者指多线程类型的服务，队列等。（mysql数据库、kafka、zookeeper等）</li>
+<li>每个实例都需要有自己独立的持久化存储，并且在k8s中是通过申明模板来进行定义。</li>
+<li>相关的k8s资源为：StatefulSet，由于是有状态的服务，所以每个pod都有特定的名称和网络标识。比如pod名是由statefulSet名+有序的数字组成（0、1、2..）</li>
+<li>在进行缩容操作的时候，可以明确知道会缩容哪一个pod，从数字最大的开始。并且Statefulset 在有实例不健康的情况下是不允许做缩容操作的。</li>
+</ul></li>
+</ul>
+
+<p><strong>5.2.2 Deployment</strong></p>
+
+<p><code>Deployment</code>为<code>Pod</code>和<code>ReplicaSet</code>提供了一个声明式定义方法发，用来替代以前的<code>ReplicationController</code>来方便的管理应用。典型的应用场景包含：</p>
+
+<ul>
+<li>定义<code>Deployment</code>来创建<code>Pod</code>和<code>ReplicaSet</code></li>
+<li>滚动升级和回滚应用</li>
+<li>扩容和缩容</li>
+<li>暂停和继续<code>Deployment</code></li>
+</ul>
+
+<p><strong>5.2.3 ReplicationController 和 ReplicaSet</strong></p>
+
+<p>在新版的<code>Kubernetes</code>中建议使用<code>ReplicaSet (RS)</code>来取代<code>ReplicationController(RC)</code>。<code>ReplicaSet</code>跟<code>ReplicationController</code>没有本质的不同，只是名字不一样，但<code>ReplicaSet</code>支持集合式<code>selector</code>。</p>
+
+<p>虽然<code>ReplicaSet</code>可以独立使用，但如今它主要被<code>Deployment</code>用作协调<code>Pod</code>的创建、删除和更新的机制。当使用<code>Deployment</code>时，你不必担心还要管理它们创建的<code>ReplicaSet</code>，<code>Deployment</code>会拥有并管理它们的<code>ReplicaSet</code>。</p>
+
+<p><strong>5.2.4 DaemonSet</strong></p>
+
+<p><code>DaemonSet</code>确保全局（或者一些）Node上运行一个Pod的副本。当有Node加入集群时，也会为他们新增一个Pod。当有Node从集群移除时，这些Pod也会被回收。删除DaemonSet将会删除他创建的所有Pod。</p>
+
+<p>DaemonSet的一些典型用法：</p>
+
+<ul>
+<li>运行集群存储daemon，例如在每个Node上运行glusterd、ceph</li>
+<li>在每个Node上运行日志手机daemon，例如fluentd、logstash</li>
+<li>在每个Node上运行监控daemon，例如Prometheus、collected、Datadog代理、New Relic代理 或Ganglia</li>
+</ul>
+
+<p><strong>5.2.5 Job/CronJob</strong></p>
+
+<ul>
+<li><p>Job负责批处理任务，即仅执行一次的任务，它保证批处理任务的一个或多个Pod成功结束。</p></li>
+
+<li><p>CronJob管理基于时间的Job，即：</p>
+
+<ul>
+<li>在给定时间只运行一次</li>
+<li>周期性的给定时间运行</li>
+</ul></li>
+</ul>
+
+<p><strong>5.2.6 HPA - Horizontal Pod Autoscaling</strong></p>
+
+<p>应用的资源使用率通常都有高峰和骶骨的时候，如何削峰填谷提供集群的整体资源利用率，让service的pod个数自动调整呢？这就依赖于HPA了，顾名思义，使Pod水平自动缩放。</p>
+
+<h2 id="5-3-kube-scheduler">5.3 kube-scheduler</h2>
+
+<p>kube-scheduler是Kubernetes中的关键模块，扮演管家的角色遵从一套机制为Pod提供调度服务，例如基于资源的公平调度、调度Pod到指定节点、或者通信频繁的Pod调度到同一节点等。容器调度本身是一件比较复杂的事，因为要确保以下几个目标：</p>
+
+<ol>
+<li>公平性：在调度Pod时需要公平的进行决策，每个节点都有被分配资源的机会，调度器需要对不同节点的使用作出平衡决策。</li>
+<li>资源高效利用：最大化群集所有资源的利用率，使有限的CPU、内存等资源服务尽可能更多的Pod。</li>
+<li>效率问题：能快速的完成对大批量Pod的调度工作，在集群规模扩增的情况下，依然保证调度过程的性能。</li>
+<li>灵活性：在实际运作中，用户往往希望Pod的调度策略是可控的，从而处理大量复杂的实际问题。因此平台要允许多个调度器并行工作，同时支持自定义调度器。</li>
+</ol>
+
+<p>为达到上述目标，kube-scheduler通过结合Node资源、负载情况、数据位置等各种因素进行调度判断，确保在满足场景需求的同时将Pod分配到最优节点。显然，kube-scheduler影响着Kubernetes集群的可用性与性能，Pod数量越多集群的调度能力越重要，尤其达到了数千级节点数时，优秀的调度能力将显著提升容器平台性能。</p>
+
+<p><strong>到这里我们可以对Pod的整个启动流程进行总结：</strong> <a href="#refer"><sup>[6]</sup></a></p>
+
+<ol>
+<li>资源管控中心Controller Manager创建新的Pod，将该Pod加入待调度的Pod列表。</li>
+<li>kube-scheduler通过API Server提供的接口监听Pods，获取待调度pod，经过预选和优选两个阶段对各个Node节点打分排序，为待调度Pod列表中每个对象选择一个最优的Node。</li>
+<li>kube-scheduler将Pod与Node的绑定写入etcd（元数据管理服务）。</li>
+<li>节点代理服务kubelet通过API Server监听到kube-scheduler产生的绑定信息，获得Pod列表，下载Image并启动容器，然后由kubelet负责拉起Pod。</li>
+</ol>
+
+<h2 id="5-4-etcd">5.4 etcd</h2>
+
+<p>Etcd是Kubernetes集群中的一个十分重要的组件，用于保存集群所有的网络配置和对象的状态信息。 <a href="#refer"><sup>[7]</sup></a></p>
+
+<h1 id="六-概念说明-node">六、概念说明 - Node</h1>
+
+<h2 id="6-1-kubelet">6.1 kubelet</h2>
+
+<p>在kubernetes集群中，每个Node节点都会启动kubelet进程，用来处理Master节点下发到本节点的任务，管理Pod和其中的容器。kubelet会在API Server上注册节点信息，定期向Master汇报节点资源使用情况，并通过cAdvisor监控容器和节点资源。可以把kubelet理解成【Server-Agent】架构中的agent，是Node上的pod管家。 <a href="#refer"><sup>[8]</sup></a></p>
+
+<h2 id="6-2-kube-proxy">6.2 kube-proxy</h2>
+
+<p>kube-proxy是Kubernetes的核心组件，部署在每个Node节点上，它是实现Kubernetes Service的通信与负载均衡机制的重要组件; kube-proxy负责为Pod创建代理服务，从apiserver获取所有server信息，并根据server信息创建代理服务，实现server到Pod的请求路由和转发，从而实现K8s层级的虚拟转发网络。</p>
+
+<p>在k8s中，提供相同服务的一组pod可以抽象成一个service，通过service提供的统一入口对外提供服务，每个service都有一个虚拟IP地址（VIP）和端口号供客户端访问。</p>
+
+<p><strong>简单来说:</strong> <a href="#refer"><sup>[9]</sup></a></p>
+
+<ul>
+<li>kube-proxy其实就是管理service的访问入口，包括集群内Pod到Service的访问和集群外访问service。</li>
+<li>kube-proxy管理sevice的Endpoints，该service对外暴露一个Virtual IP，也成为Cluster IP, 集群内通过访问这个Cluster IP:Port就能访问到集群内对应的serivce下的Pod。</li>
+<li>service是通过Selector选择的一组Pods的服务抽象，其实就是一个微服务，提供了服务的LB和反向代理的能力，而kube-proxy的主要作用就是负责service的实现。</li>
+<li>service另外一个重要作用是，一个服务后端的Pods可能会随着生存灭亡而发生IP的改变，service的出现，给服务提供了一个固定的IP，而无视后端Endpoint的变化。</li>
+</ul>
+
+<h1 id="七-小结">七、小结</h1>
+
+<p><img src="../../static/uploads/pod-lifecycle-create.png" alt="" /></p>
+
+<p>回过头来看一下我们之前的操作 <a href="#refer"><sup>[10]</sup></a></p>
+
+<pre><code>$ kubectl run itopic --image=pengbotao/itopic.go:alpine --replicas=3 --port=8001
+</code></pre>
+
+<ul>
+<li><p>通过<code>kubectl run</code>时，客户端会将请求发送给<code>kube-apiserver</code>。</p></li>
+
+<li><p><code>kube-apiserver</code>经过一些列验证之后将<code>Deployment</code>记录存储到<code>Etcd</code>并初始化。</p></li>
+
+<li><p><code>Deployment Controller</code>检测到<code>Deployment</code>记录的更改。</p>
+
+<ul>
+<li>当所有的<code>Controller</code>正常运行后，<code>Etcd</code>中就会保存一个<code>Deployment</code>、一个<code>ReplicaSet</code>和三个<code>Pod</code>资源记录，并且可以通过 <code>Kube-Apiserver</code>查看。然而，这些<code>Pod</code>资源现在还处于<code>Pending</code>状态，因为它们还没有被调度到集群中合适的<code>Node</code>上运行。这个问题最终要靠调度器<code>Scheduler</code>来解决。</li>
+</ul></li>
+
+<li><p><code>Scheduler</code>将待调度的<code>Pod</code>按照特定的算法和调度策略绑定到集群中某个合适的<code>Node</code>上，并将绑定信息写入<code>Etcd</code>中。</p></li>
+
+<li><p>一旦<code>Scheduler</code>将<code>Pod</code>调度到某个节点上，该节点的<code>Kubelet</code>就会接管该<code>Pod</code>并开始部署。</p>
+
+<ul>
+<li>在<code>Kubernetes</code>集群中，每个<code>Node</code>节点上都会启动一个<code>Kubelet</code>服务进程，该进程用于处理<code>Scheduler</code>下发到本节点的任务，管理<code>Pod</code>的生命周期，包括挂载卷、容器日志记录、垃圾回收以及其他与<code>Pod</code>相关的事件。</li>
+</ul></li>
+</ul>
+
+<pre><code>$ kubectl expose deployment itopic --type=LoadBalancer --port=38001 --target-port=8001 
+</code></pre>
+
+<ul>
+<li>为<code>Pod</code>创建代理服务，从<code>apiserver</code>获取所有<code>server</code>信息，并根据<code>server</code>信息创建代理服务，实现<code>server</code>到<code>Pod</code>的请求路由和转发，从而实现<code>K8s</code>层级的虚拟转发网络，实现外部访问的访问。</li>
+</ul>
+
+<p>最后，本文档是一个边学习边整理的过程，先通过比较简单的一个环境熟悉起来，了解其中的概念、模块及交互，所以仅当一个入门知识介绍。本章引用的文档、涉及的概念也比较多，可以先熟悉下在进入下一篇。</p>
+
+<hr />
+
+<div id="refer"></div>
+
+<ul>
+<li>[1] <a href="https://www.kubernetes.org.cn/kubernetes%E8%AE%BE%E8%AE%A1%E6%9E%B6%E6%9E%84">Kubernetes设计架构</a></li>
+<li>[2] <a href="https://github.com/gotok8s/k8s-docker-desktop-for-mac">Docker Desktop for Mac 开启并使用 Kubernetes</a></li>
+<li>[3] <a href="https://blog.csdn.net/huwh_/article/details/77017281">Kubernetes基本概念（二）之k8s常用对象说明</a></li>
+<li>[4] <a href="https://www.cnblogs.com/Su-per-man/p/10942783.html">k8s 组件介绍-API Server</a></li>
+<li>[5] <a href="https://tinychen.com/190722-k8s-controller/">在k8s中的controller简介</a></li>
+<li>[6] <a href="https://www.cnblogs.com/kcxg/p/11119679.html">k8s调度器kube-scheduler</a></li>
+<li>[7] <a href="https://blog.csdn.net/bbwangj/article/details/82866927">Etcd在kubernetes集群中的作用</a></li>
+<li>[8] <a href="https://www.jianshu.com/p/77d1b06ce798">K8s核心原理（四）kubelet</a></li>
+<li>[9] <a href="https://www.cnblogs.com/fuyuteng/p/11598768.html">kubernetes核心组件kube-proxy</a></li>
+<li>[10] <a href="https://github.com/jamiehannaford/what-happens-when-k8s/tree/master/zh-cn">What happens when I type kubectl run?</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-08.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-08.html">2020-08-28 19:06</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/docker-summary.html">Docker ( 6 ) - Docker小结</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/k8s-yaml.html">Kubernetes基础 ( 2 ) - 资源清单</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 1 ) - 环境搭建及概念说明.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 1 ) - 环境搭建及概念说明.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

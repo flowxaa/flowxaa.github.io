@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>通过自定义Grafana监控集群</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">通过自定义Grafana监控集群</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>阿里云Ack容器集成了Prometheus监控，但监控数据的展示需要进入到阿里云后台，涉及到多账号配置等。我们可以将监控数据配置到自己的Grafana上，只需要添加Dashboard配置对应的数据源即可。</p>
+
+<p>首先，需要先安装Grafana：</p>
+
+<p>1、创建PV</p>
+
+<pre><code>apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: grafana-pv
+  labels:
+    project: grafana
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: nasplugin.csi.alibabacloud.com
+    volumeHandle: grafana-pv
+    volumeAttributes:
+      server: &quot;*.cn-hangzhou.nas.aliyuncs.com&quot;
+      path: &quot;/grafana&quot;
+  mountOptions:
+  - nolock,tcp,noresvport
+  - vers=3
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: grafana-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  selector:
+    matchLabels:
+      project: grafana
+
+</code></pre>
+
+<p>2、创建Service</p>
+
+<pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: grafana
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: grafana
+spec:
+  rules:
+  - host: grafana.demo.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: grafana
+          servicePort: 80
+
+</code></pre>
+
+<p>3、创建Deployment</p>
+
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  labels:
+    app: grafana
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:7.4.5
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+          name: grafana
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          value: admin
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: admin
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1000Mi
+        volumeMounts:
+        - mountPath: /var/lib/grafana
+          subPath: grafana
+          name: storage
+      securityContext:
+        fsGroup: 472
+        runAsUser: 472
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: grafana-pvc
+</code></pre>
+
+<p>Grafana创建后接下来要做的是将数据源配置到自建的Grafana中。</p>
+
+<p>1、集群通过Prometheus存储监控数据，需要先找到Prometheus的API接口地址：</p>
+
+<pre><code>容器服务 - Kubernetes -&gt; 点击对应集群 -&gt; Prometheus监控 -&gt; 跳转到应用实施监控服务 ARMS -&gt; 设置 -&gt; Agent设置
+</code></pre>
+
+<p>2、在自建的Grafana中配置数据源</p>
+
+<pre><code>Configuration -&gt; Data Sources
+</code></pre>
+
+<p>3、在自建的Grafana中创建Folder，用来展示该集群的所有监控图表</p>
+
+<pre><code>Dashboards -&gt; Manage -&gt; New Folder
+</code></pre>
+
+<p>4、Dashboard导入</p>
+
+<pre><code>1、在阿里云的Grafana界面打开想要导入的图表，左上有个 Share Dashboard的，进入Export Tab页面
+2、拷贝JSON并修改数据源为前面配置的数据源名称
+3、回到自建的Grafana，进入前一步创建的Folder，点击Import完成导入。
+</code></pre>
+
+<p>正常应该就可以看到监控数据了，根据需要导入想要展示的图表即可。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-03.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-03.html">2021-03-25 21:18</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/helm.html">Kubernetes包管理工具 - Helm</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/kafka.html">Kafka集群配置及管理</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\通过自定义Grafana监控集群.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\通过自定义Grafana监控集群.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

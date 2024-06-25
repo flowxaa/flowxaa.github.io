@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Excel表格常用操作</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Excel表格常用操作</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="vlookup">VLOOKUP</h1>
+
+<p><code>vlookup</code>是一个纵向查找函数，可以将多个表格的数据进行快速引用，函数定义：</p>
+
+<pre><code>VLOOKUP(查找值, 数据表, 列序数, 匹配条件)
+</code></pre>
+
+<ul>
+<li><strong>查找值</strong>：要查找的对象，可以是数值、引用或文本字符串</li>
+<li><strong>数据表</strong>：要查找的数据表区域。比如<code>A:C</code>表示ABC三列，<code>A1:B6</code>表示AB两列的第一行到第六行，<code>A:C+F:H</code>则表示ABCFGH列。</li>
+<li><strong>列序数</strong>：返回数据在数据表区域的第几列，第一列写<code>1</code>，二列写<code>2</code></li>
+<li><strong>匹配条件</strong>：查找时是精确匹配还是大致匹配。如果为<code>FALSE</code>则是精确匹配，如果为<code>TRUE</code>或空则是大致匹配。</li>
+</ul>
+
+<h2 id="示例">示例</h2>
+
+<p>两张数据表：城市表（<code>A:C</code>）、国家表(<code>F:G</code>)，在<code>D</code>列展示城市对应的国家名称。</p>
+
+<p><img src="../../static/uploads/vlookup@2x.png" alt="" /></p>
+
+<p><strong>1. 去掉公式</strong>：当前<code>D</code>列是对<code>G</code>列的引用，如果<code>A</code>列或者<code>G</code>列调整了，则<code>D</code>列也会随着变动。如果想去掉引用公式，让它固定下来：</p>
+
+<pre><code>复制D列 -&gt; 右键 -&gt; 选择性粘贴 -&gt; 数值
+</code></pre>
+
+<p><strong>2. 去掉#N/A</strong>：有时会出现找不到的情况，通过<code>IFERROR</code>函数规避显示的问题，比如默认显示空字符串</p>
+
+<pre><code>=IFERROR(VLOOKUP(A:A,F:G,2,FALSE), &quot;&quot;)
+</code></pre>
+
+<p>当前示例是放在同一个<code>Sheet</code>中，如果处于不同<code>Sheet</code>或者不同文档也是一样的操作。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-01.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-01.html">2020-01-25 09:12</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/excel.html">Excel</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/小技能.html">小技能</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/will-kubernetes-kill-devops.html">Kubernetes 会不会“杀死” DevOps？</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/ps-one-inch.html">用Ps制作一寸证件照</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\小知识\Excel表格常用操作.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\小知识\Excel表格常用操作.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes基础 ( 3 ) - Pod</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes基础 ( 3 ) - Pod</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a>
+<ul>
+<li><a href="#1-1-pod简介">1.1 Pod简介</a></li>
+<li><a href="#1-2-pod分类">1.2 Pod分类</a></li>
+</ul></li>
+<li><a href="#二-pod资源清单">二、Pod资源清单</a>
+<ul>
+<li><a href="#2-1-metadata">2.1 metadata</a></li>
+<li><a href="#2-2-spec">2.2 spec</a></li>
+<li><a href="#2-3-spec-restartpolicy">2.3 spec.restartPolicy</a></li>
+<li><a href="#2-4-spec-containers">2.4 spec.containers</a>
+<ul>
+<li><a href="#2-4-1-image">2.4.1 image</a></li>
+<li><a href="#2-4-2-ports">2.4.2 ports</a></li>
+<li><a href="#2-4-3-volumemounts">2.4.3 volumeMounts</a></li>
+<li><a href="#2-4-4-env">2.4.4 env</a></li>
+<li><a href="#2-4-5-resources">2.4.5 resources</a></li>
+<li><a href="#2-4-6-readinessprobe">2.4.6 readinessProbe</a></li>
+<li><a href="#2-4-7-livenessprobe">2.4.7 livenessProbe</a></li>
+</ul></li>
+<li><a href="#2-5-spec-volumes">2.5 spec.volumes</a>
+<ul>
+<li><a href="#2-5-1-emptydir">2.5.1 emptyDir</a></li>
+<li><a href="#2-5-2-hostpath">2.5.2 hostPath</a></li>
+<li><a href="#2-5-3-nfs">2.5.3 nfs</a></li>
+</ul></li>
+<li><a href="#2-6-spec-initcontainers">2.6 spec.initContainers</a></li>
+</ul></li>
+<li><a href="#三-pod生命周期">三、 Pod生命周期</a>
+<ul>
+<li><a href="#3-1-pause">3.1 pause</a></li>
+<li><a href="#3-2-init-container">3.2 init container</a></li>
+<li><a href="#3-3-hook">3.3 hook</a></li>
+<li><a href="#3-4-readiness">3.4 readiness</a></li>
+<li><a href="#3-5-liveness">3.5 liveness</a></li>
+</ul></li>
+<li><a href="#四-小结">四、小结</a></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<h2 id="1-1-pod简介">1.1 Pod简介</h2>
+
+<p><code>k8s</code>管理的最小粒度资源是<code>Pod</code>，它是<code>k8s</code>基础资源。一个<code>Pod</code>里可运行多个容器，而一个<code>Node</code>里又可以运行多个<code>Pod</code>，每个<code>Node</code>节点上都安装有<code>kubelet</code>，当<code>Pod</code>有任何问题，<code>kubelet</code>会和主节点通信，从而完成重启或者剔除节点等操作。<code>Pod</code>里的容器共享存储、网络。</p>
+
+<ul>
+<li><p><strong>网络</strong>：每个<code>Pod</code>被分配一个独立的<code>IP</code>地址，<code>Pod</code>中的每个容器共享网络命名空间，包括<code>IP</code>地址和网络端口。<code>Pod</code>内的容器可以使用<code>localhost</code>相互通信。当<code>Pod</code>中的容器与<code>Pod</code>外部通信时，他们必须协调如何使用共享网络资源（如端口）。</p></li>
+
+<li><p><strong>存储</strong>：<code>Pod</code>可以指定一组共享存储<code>volumes</code>。<code>Pod</code>中的所有容器都可以访问共享<code>volumes</code>，允许这些容器共享数据。<code>volumes</code>还用于<code>Pod中</code>的数据持久化，以防其中一个容器需要重新启动而丢失数据。</p></li>
+</ul>
+
+<p><img src="../../static/uploads/k8s-pod-struct.png" alt="" /></p>
+
+<h2 id="1-2-pod分类">1.2 Pod分类</h2>
+
+<p><code>Pod</code>可以分为两类：</p>
+
+<ul>
+<li>自主式<code>Pod</code>：直接创建的<code>Pod</code>，没有管理者，退出后不会有重新拉起操作。</li>
+<li>控制器<code>Pod</code>：可以根据控制器的不同规则对<code>Pod</code>做不同的行为控制。</li>
+</ul>
+
+<p>控制器<code>Pod</code>我们会在后面节介绍控制器时来讲，本章主要介绍自主式<code>Pod</code>。先来看一个示例，了解下<code>Pod</code>的基本用法。</p>
+
+<pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+  labels:
+    name: mypod
+spec:
+  restartPolicy: Always
+  containers:
+  - name: c1
+    image: busybox
+    command:
+      - &quot;/bin/sh&quot;
+      - &quot;-c&quot;
+      - &quot;top&quot;
+    resources:
+      limits:
+        memory: &quot;128Mi&quot;
+        cpu: &quot;500m&quot;
+  - name: c2
+    image: busybox
+    command:
+      - &quot;/bin/sh&quot;
+      - &quot;-c&quot;
+      - &quot;while true ; sleep 1; do date ; done&quot;
+    resources:
+      limits:
+        memory: &quot;128Mi&quot;
+        cpu: &quot;500m&quot;
+  - name: c3
+    image: busybox
+    command:
+      - &quot;/bin/sh&quot;
+      - &quot;-c&quot;
+      - &quot;date&quot;
+    resources:
+      limits:
+        memory: &quot;128Mi&quot;
+        cpu: &quot;500m&quot;
+</code></pre>
+
+<p>说明：</p>
+
+<ul>
+<li>定义了一个<code>Pod</code>，<code>Pod</code>的名字是<code>mypod</code>，打了一个标签也是<code>mypod</code></li>
+<li><code>Pod</code>里定义了3个容器，容器都从<code>busybox</code>拉取镜像，但没有指定<code>busybox</code>的版本，默认<code>latest</code>版本</li>
+<li>第一个容器执行<code>Top</code>命令，第二个容器每<code>1s</code>打印时间，第三个容器只打印了当前时间</li>
+</ul>
+
+<p>来看看执行情况：</p>
+
+<pre><code># 查看Pod
+$ kubectl get pod
+NAME                           READY   STATUS    RESTARTS   AGE
+mypod                          2/3     Running   3          74s
+
+# 查看c2容器日志，-f参数类似 tail -f。
+$ kubectl logs mypod c2 -f
+Fri Sep  4 03:46:11 UTC 2020
+Fri Sep  4 03:46:12 UTC 2020
+Fri Sep  4 03:46:13 UTC 2020
+Fri Sep  4 03:46:14 UTC 2020
+Fri Sep  4 03:46:15 UTC 2020
+Fri Sep  4 03:46:16 UTC 2020
+Fri Sep  4 03:46:17 UTC 2020
+Fri Sep  4 03:46:18 UTC 2020
+Fri Sep  4 03:46:19 UTC 2020
+</code></pre>
+
+<p>容器要求程序在前台执行，执行完了容器就退出了。因为前两个容器都会一直执行，第三个容器执行完就退出了。通过<code>describe</code>也可以看到。</p>
+
+<pre><code>$ kubectl describe pod mypod
+Events:
+  Type    Reason     Age        From                     Message
+  ----    ------     ----       ----                     -------
+  Normal  Scheduled  &lt;unknown&gt;  default-scheduler        Successfully assigned default/mypod to docker-desktop
+  Normal  Pulling    7s         kubelet, docker-desktop  Pulling image &quot;busybox&quot;
+  Normal  Pulled     6s         kubelet, docker-desktop  Successfully pulled image &quot;busybox&quot;
+  Normal  Created    6s         kubelet, docker-desktop  Created container c1
+  Normal  Started    6s         kubelet, docker-desktop  Started container c1
+  Normal  Pulling    6s         kubelet, docker-desktop  Pulling image &quot;busybox&quot;
+  Normal  Pulled     3s         kubelet, docker-desktop  Successfully pulled image &quot;busybox&quot;
+  Normal  Created    3s         kubelet, docker-desktop  Created container c2
+  Normal  Started    3s         kubelet, docker-desktop  Started container c2
+  Normal  Pulling    3s         kubelet, docker-desktop  Pulling image &quot;busybox&quot;
+  Normal  Pulled     1s         kubelet, docker-desktop  Successfully pulled image &quot;busybox&quot;
+  Normal  Created    1s         kubelet, docker-desktop  Created container c3
+  Normal  Started    1s         kubelet, docker-desktop  Started container c3
+  Warning  BackOff    15s (x4 over 48s)  kubelet, docker-desktop  Back-off restarting failed container
+  Normal   Pulling    3m3s (x4 over 3m57s)   kubelet, docker-desktop  Pulling image &quot;busybox
+  Warning  BackOff    83s (x23 over 6m19s)   kubelet, docker-desktop  Back-off restarting failed container
+
+$ kubectl get pod mypod -o wide
+NAME    READY   STATUS             RESTARTS   AGE   IP          NODE             NOMINATED NODE   READINESS GATES
+mypod   2/3     CrashLoopBackOff   7          14m   10.1.2.46   docker-desktop   &lt;none&gt;           &lt;none&gt;
+</code></pre>
+
+<ul>
+<li>由于是<code>latest</code>版本，默认每次创建容器都会有<code>Pulling image &quot;busybox&quot;</code>操作，线上应避免直接拉<code>latest</code>镜像，如果要用可以重新打个<code>tag</code>。</li>
+<li><code>c3</code>容器执行后就退出了，所以<code>Pod</code>会尝试重启容器，但会一直退出，并不是执行失败了，而是执行完退出了。</li>
+<li>重新查看容器状态为<code>CrashLoopBackOff</code>，<code>READY</code>状态为<code>2/3</code>，<code>RESTARTS</code>重启次数为7，重启的粒度是容器层级，从日志上看<code>c1</code>、 <code>c2</code>容器的重启次数没有增多。</li>
+</ul>
+
+<h1 id="二-pod资源清单">二、Pod资源清单</h1>
+
+<p><code>apiVersion</code>和<code>kind</code>通过<code>kubectl explain</code>可以看到</p>
+
+<pre><code>$ kubectl explain pod
+KIND:     Pod
+VERSION:  v1
+</code></pre>
+
+<p>所以，主要介绍下<code>metadata</code>和<code>spec</code>下的字段说明。</p>
+
+<h2 id="2-1-metadata">2.1 metadata</h2>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>metadata.name</td>
+<td>string</td>
+<td>资源名称，名称在名称空间内需唯一，名称不能包含<code>_</code>，可使用<code>-</code>和<code>.</code></td>
+</tr>
+
+<tr>
+<td>metadata.namespace</td>
+<td>string</td>
+<td>名称空间，默认<code>default</code>名称空间</td>
+</tr>
+
+<tr>
+<td>metadata.labels</td>
+<td>map[string]string</td>
+<td>标签</td>
+</tr>
+
+<tr>
+<td>metadata.annotations</td>
+<td>map[string]string</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="2-2-spec">2.2 spec</h2>
+
+<p>描述Pod的基本信息。</p>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.restartPolicy</td>
+<td>string</td>
+<td>重启策略</td>
+</tr>
+
+<tr>
+<td>spec.containers[]</td>
+<td>[]Object</td>
+<td>定义Pod里包含的容器</td>
+</tr>
+
+<tr>
+<td>spec.volumes[]</td>
+<td>[]Object</td>
+<td>存储卷</td>
+</tr>
+
+<tr>
+<td>spec.initContainers[]</td>
+<td>[]Object</td>
+<td>初始化容器</td>
+</tr>
+
+<tr>
+<td>spec.hostname</td>
+<td>string</td>
+<td>指定主机名</td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="2-3-spec-restartpolicy">2.3 spec.restartPolicy</h2>
+
+<p>前面示例容器会不断重启，除了容器执行完成后，主要还是跟重启参数设置有关，默认为总是重启。看描述：</p>
+
+<pre><code>$ kubectl explain pod.spec.restartPolicy
+KIND:     Pod
+VERSION:  v1
+
+FIELD:    restartPolicy &lt;string&gt;
+
+DESCRIPTION:
+     Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always.
+</code></pre>
+
+<ul>
+<li>重启策略针对<code>Pod</code>里的所有容器</li>
+<li>值按字面意思理解就行
+
+<ul>
+<li><code>Always</code>：容器退出时总是重启容器，默认策略。</li>
+<li><code>OnFailure</code>：容器异常退出时重启（状态码非0），如果增加<code>spec.restartPolicy = OnFailure</code>，则c3容器执行后不会在重启。</li>
+<li><code>Never</code>：容器退出时不重启容器</li>
+</ul></li>
+</ul>
+
+<h2 id="2-4-spec-containers">2.4 spec.containers</h2>
+
+<p><code>Pod</code>中包含的容器列表，单个<code>Pod</code>可以配置多个容器。需要注意的是因为他们共享网络所以容器里不能都启动同一个端口，否则就端口冲突了，不同<code>Pod</code>则没有限制。一般一个容器负责处理一件事情，比如要配置<code>PHP+Nginx</code>，则可以<code>PHP</code>起一个容器，<code>Nginx</code>起一个容器，他们在同一个<code>Pod</code>中，通过<code>volume</code>的方式共享磁盘。所以<code>Pod</code>的概念就类似一台虚拟机，里面可以起多个容器相互协作。</p>
+
+<p>在看<code>Docker</code>的时候有一个疑问是把容器理解成虚拟机包含整套服务（比如<code>CentOS</code>镜像里安装了各种环境），还是只是一个进程。在<code>k8s</code>里看，更倾向于相互独立。</p>
+
+<h3 id="2-4-1-image">2.4.1 image</h3>
+
+<p>容器镜像相关参数设置</p>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.containers[]</td>
+<td>[]Object[required]</td>
+<td>定义容器列表</td>
+</tr>
+
+<tr>
+<td>spec.containers[].name</td>
+<td>string[required]</td>
+<td>定义容器名称，名称在Pod内部需唯一，名称不能被更新</td>
+</tr>
+
+<tr>
+<td>spec.containers[].image</td>
+<td>string</td>
+<td>定义镜像来源</td>
+</tr>
+
+<tr>
+<td>spec.containers[].imagePullPolicy</td>
+<td>string</td>
+<td>定义镜像拉取策略，有Always、Never、IfNotPresent三个值。默认Always。<br />- Always: 每次都尝试重新拉取镜像<br />- Never：仅使用本地镜像<br />- IfNotPresent：本地有就使用，没有就拉取</td>
+</tr>
+
+<tr>
+<td>spec.containers[].workingDir</td>
+<td>string</td>
+<td>指定容器工作目录</td>
+</tr>
+
+<tr>
+<td>spec.containers[].command</td>
+<td>[]string</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].args</td>
+<td>[]string</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="2-4-2-ports">2.4.2 ports</h3>
+
+<p>容器端口设置</p>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.containers[].ports</td>
+<td>[]Object</td>
+<td>指定容器需要用到的端口列表</td>
+</tr>
+
+<tr>
+<td>spec.containers[].ports[].name</td>
+<td>string</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].ports[].containerPort</td>
+<td>integer[required]</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].ports[].hostIP</td>
+<td>string</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].ports[].hostPort</td>
+<td>integer</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].ports[].protocol</td>
+<td>string</td>
+<td>Must be UDP, TCP, or SCTP. Defaults to &ldquo;TCP&rdquo;.</td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="2-4-3-volumemounts">2.4.3 volumeMounts</h3>
+
+<p>容器存储卷挂载</p>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.containers[].volumeMounts</td>
+<td>[]Object</td>
+<td>指定容器内部存储券配置</td>
+</tr>
+
+<tr>
+<td>spec.containers[].volumeMounts[].name</td>
+<td>string[required]</td>
+<td>需要匹配存储卷的名称</td>
+</tr>
+
+<tr>
+<td>spec.containers[].volumeMounts[].mountPath</td>
+<td>string[required]</td>
+<td>对应所在容器内的路径</td>
+</tr>
+
+<tr>
+<td>spec.containers[].volumeMounts[].readOnly</td>
+<td></td>
+<td>是否只读，默认false</td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="2-4-4-env">2.4.4 env</h3>
+
+<p>容器环境变量</p>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.containers[].env</td>
+<td>[]Object</td>
+<td>指定容器运行前需要设置的环境变量列表</td>
+</tr>
+
+<tr>
+<td>spec.containers[].env[].name</td>
+<td>string[required]</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].env[].value</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="2-4-5-resources">2.4.5 resources</h3>
+
+<p>容器的资源限制，Request用来设置Pod初始化时需要的资源，Limit用来限制容器使用资源的最大值，防止容器不限制的占用资源。</p>
+
+<ul>
+<li>CPU单位100m  = 0.1CPU。可以设置为0.5 也可以设置为500m</li>
+<li>内存单位1Mi = 1024Ki</li>
+</ul>
+
+<p>需要满足关系：0 &lt;= Request &lt;= Limit &lt;=Infinity （如果Limit为0表示不限制）</p>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.containers[].resources</td>
+<td>Object</td>
+<td>指定资源限制和资源请求的值</td>
+</tr>
+
+<tr>
+<td>spec.containers[].resources.limits</td>
+<td>map[string]string</td>
+<td>指定容器运行的资源上限</td>
+</tr>
+
+<tr>
+<td>spec.containers[].resources.limits.cpu</td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].resources.limits.memory</td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].resources.requests</td>
+<td>map[string]string</td>
+<td>指定容器启动和调度时的限制设置</td>
+</tr>
+
+<tr>
+<td>spec.containers[].resources.requests.cpu</td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.containers[].resources.requests.memory</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="2-4-6-readinessprobe">2.4.6 readinessProbe</h3>
+
+<p>检测容器是否就绪，如果准备好了则可以接收服务的流量。</p>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.containers[].readinessProbe</td>
+<td>Object</td>
+<td>就绪检测</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.initialDelaySeconds</td>
+<td>integer</td>
+<td>容器启动后首次执行间隔时间。</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.periodSeconds</td>
+<td>integer</td>
+<td>检测周期，默认是10s。最小值可设置为1s。</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.timeoutSeconds</td>
+<td>integer</td>
+<td>检测超时时间，默认为1s。最小值可设置为1s。</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.successThreshold</td>
+<td>integer</td>
+<td>探测失败后，最少连续探测成功多少次才被认定为成功。默认是<code>1</code>。对于<code>liveness</code>必须是<code>1</code>。最小值是<code>1</code>。</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.failureThreshold</td>
+<td>integer</td>
+<td>探测成功后，最少连续探测失败多少次才被认定为失败。默认是<code>3</code>。最小值是<code>1</code>。</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.httpGet</td>
+<td>Object</td>
+<td>检测方式一：通过HTTP请求检测</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.httpGet.host</td>
+<td>string</td>
+<td>连接的主机名</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.httpGet.path</td>
+<td>string</td>
+<td>路径</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.httpGet.port</td>
+<td>string</td>
+<td>端口名字或端口号</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.httpGet.scheme</td>
+<td>string</td>
+<td>检测协议，默认是HTTP</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.httpGet.httpHeaders[]</td>
+<td>[]Object</td>
+<td>自定义请求头</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.exec</td>
+<td>Object</td>
+<td>检测方式二：通过运行命令检测</td>
+</tr>
+
+<tr>
+<td>spec.containers[].readinessProbe.tcpSocket</td>
+<td>Object</td>
+<td>检测方式三：TCP方式</td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="2-4-7-livenessprobe">2.4.7 livenessProbe</h3>
+
+<p>检测容器是否存活。配置方式与<code>readinessProbe</code>一致。将在本篇第三章<code>Pod</code>生命周期中做演示。</p>
+
+<h2 id="2-5-spec-volumes">2.5 spec.volumes</h2>
+
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th>字段类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>spec.volumes[]</td>
+<td>[]Object</td>
+<td>存储卷</td>
+</tr>
+
+<tr>
+<td>spec.volumes[].name</td>
+<td>string</td>
+<td>存储卷的名称，Pod内需要唯一。</td>
+</tr>
+
+<tr>
+<td><strong>spec.volumes[].emptyDir</strong></td>
+<td><strong>Object</strong></td>
+<td><strong>生命周期同Pod，Pod创建时创建，Pod移除时删除，无需指定目录。</strong></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].emptyDir.medium</td>
+<td>string</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].emptyDir.sizeLimit</td>
+<td>string</td>
+<td></td>
+</tr>
+
+<tr>
+<td><strong>spec.volumes[].hostPath</strong></td>
+<td><strong>Object</strong></td>
+<td><strong>宿主机方式</strong></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].hostPath.path</td>
+<td>string[required]</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].hostPath.type</td>
+<td>string</td>
+<td></td>
+</tr>
+
+<tr>
+<td><strong>spec.volumes[].nfs</strong></td>
+<td><strong>Object</strong></td>
+<td><strong>nfs方式</strong></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].nfs.path</td>
+<td>string</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].nfs.readOnly</td>
+<td>Boolean</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].nfs.server</td>
+<td>string[required]</td>
+<td></td>
+</tr>
+
+<tr>
+<td>spec.volumes[].persistentVolumeClaim</td>
+<td>Object</td>
+<td></td>
+</tr>
+
+<tr>
+<td><strong>claimName</strong></td>
+<td><strong>string[required]</strong></td>
+<td><strong>PVC名称</strong></td>
+</tr>
+
+<tr>
+<td>readOnly</td>
+<td>boolean</td>
+<td>是否只读，默认false</td>
+</tr>
+</tbody>
+</table>
+
+<p>存储卷相当于<code>Pod</code>中多个容器的共享目录，共享的方式有很多种，通过示例来看看常见的几种。</p>
+
+<h3 id="2-5-1-emptydir">2.5.1 emptyDir</h3>
+
+<p>我们来在一个<code>Pod</code>里创建2个容器，分别是<code>Nginx</code>和<code>PHP</code>，然后交互挂一个空目录。</p>
+
+<pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: php-nginx
+  labels:
+    name: php-nginx
+spec:
+  restartPolicy: Always
+  containers:
+  - name: php
+    image: pengbotao/php:7.4.8-fpm-alpine
+    volumeMounts:
+    - mountPath: /var/www/html
+      name: wwwroot
+  - name: nginx
+    image: nginx:1.19.2-alpine
+    volumeMounts:
+    - mountPath: /usr/share/nginx/html
+      name: wwwroot
+  volumes:
+  - name: wwwroot
+    emptyDir: {}
+</code></pre>
+
+<p>执行之后可以看到创建的<code>Pod</code>，没有配置<code>service</code>，外部无法访问。我们先进入到<code>Nginx</code>的容器进行验证</p>
+
+<pre><code>$ kubectl exec -it php-nginx -c nginx /bin/sh
+</code></pre>
+
+<p>在<code>/usr/share/nginx/html</code>下创建<code>index.html</code>和<code>info.php</code>并写入内容，调整<code>/etc/nginx/conf.d/default.conf</code></p>
+
+<pre><code>    location ~ \.php$ {
+    #    root           html;
+        fastcgi_pass   127.0.0.1:9000;
+        fastcgi_index  index.php;
+        fastcgi_param  SCRIPT_FILENAME  /var/www/html$fastcgi_script_name;
+        include        fastcgi_params;
+    }
+</code></pre>
+
+<p>他们处在同一个<code>Pod</code>里，可以直接用<code>127.0.0.1:9000</code>访问<code>PHP</code>，设置后重启<code>Nginx</code>后（<code>/usr/sbin/nginx -s reload</code>）就可以通过<code>curl 127.0.0.1</code>来访问了。</p>
+
+<p>需要注意的是<code>Pod</code>删除后目录就清掉了。</p>
+
+<h3 id="2-5-2-hostpath">2.5.2 hostPath</h3>
+
+<p>还是以<code>PHP</code> + <code>Nginx</code>交互，我们来看看用<code>hostPath</code>如何配置。</p>
+
+<pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: php-nginx
+  labels:
+    name: php-nginx
+spec:
+  restartPolicy: Always
+  containers:
+  - name: php
+    image: pengbotao/php:7.4.8-fpm-alpine
+    volumeMounts:
+    - mountPath: /var/www/html
+      name: wwwroot
+  - name: nginx
+    image: nginx:1.19.2-alpine
+    volumeMounts:
+    - mountPath: /usr/share/nginx/html
+      name: wwwroot
+  volumes:
+  - name: wwwroot
+    hostPath: 
+      path: /Users/peng/k8s
+</code></pre>
+
+<p>只需要修改<code>volumes</code>的配置方式，<code>Nginx</code>的修改方式同上面，本机的目录里创建文件后，在容器里就可以访问了。因为挂载在本机，所以删除容器不会影响，可以用于一些需要持久化的场景。</p>
+
+<h3 id="2-5-3-nfs">2.5.3 nfs</h3>
+
+<p>也可以通过nfs共享的方式来存储。</p>
+
+<pre><code>volumes:
+- name: wwwroot
+  nfs:
+    server: 192.168.0.100
+    path: /wwwroot
+</code></pre>
+
+<blockquote>
+<p>这里没有测试，从配置方式上看与前面基本一致。</p>
+</blockquote>
+
+<h2 id="2-6-spec-initcontainers">2.6 spec.initContainers</h2>
+
+<p><code>Init Container</code>就是用来做初始化工作的容器，可以是一个或者多个，如果有多个的话，这些容器会按定义的顺序依次执行，只有所有的<code>Init Container</code>执行完后，主容器才会被启动。我们知道一个<code>Pod</code>里面的所有容器是共享数据卷和网络命名空间的，所以<code>Init Container</code>里面产生的数据可以被主容器使用到的。</p>
+
+<p>他也是一个容器，所以资源清单配置上和容器的配置是一样的。即前面提到的字段它都可以用到，来看个示例：</p>
+
+<p>创建一个<code>Nginx</code>容器，同时设置了2个<code>initContainers</code>，每个<code>Container</code>都会执行一条命令，命令执行完成后容器退出，进入下一个初始化容器，所有容器执行完毕后，<code>Nginx</code>容器才会启动。</p>
+
+<pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.19.2-alpine
+  initContainers:
+  - name: init-redis
+    image: busybox:1.32.0
+    command: ['sh', '-c', 'until nslookup redis-server; do echo waiting for redis; sleep 2; done;']
+  - name: init-mysql
+    image: busybox:1.32.0
+    command: ['sh', '-c', 'until nslookup mysql-server; do echo waiting for mysql; sleep 2; done;']
+</code></pre>
+
+<p>创建<code>Pod</code>之后可以看到状态，<code>kubectl describe</code>也可以看到<code>pod</code>的信息，在等<code>init-redis</code>容器执行完毕。</p>
+
+<pre><code>$ kubectl get pod
+NAME        READY   STATUS     RESTARTS   AGE
+nginx       0/1     Init:0/2   0          11s
+
+$ kubectl describe pod nginx
+
+Events:
+  Type    Reason     Age        From                     Message
+  ----    ------     ----       ----                     -------
+  Normal  Scheduled  &lt;unknown&gt;  default-scheduler        Successfully assigned default/nginx to docker-desktop
+  Normal  Pulled     9m11s      kubelet, docker-desktop  Container image &quot;busybox:1.32.0&quot; already present on machine
+  Normal  Created    9m11s      kubelet, docker-desktop  Created container init-redis
+  Normal  Started    9m11s      kubelet, docker-desktop  Started container init-redis
+</code></pre>
+
+<p>分别启动<code>redis-server</code>和<code>mysql-server</code>的服务后，可以看到，主容器就启动了。</p>
+
+<pre><code>$ kubectl describe pod nginx
+
+Events:
+  Type    Reason     Age        From                     Message
+  ----    ------     ----       ----                     -------
+  Normal  Scheduled  &lt;unknown&gt;  default-scheduler        Successfully assigned default/nginx to docker-desktop
+  Normal  Pulled     9m11s      kubelet, docker-desktop  Container image &quot;busybox:1.32.0&quot; already present on machine
+  Normal  Created    9m11s      kubelet, docker-desktop  Created container init-redis
+  Normal  Started    9m11s      kubelet, docker-desktop  Started container init-redis
+  Normal  Pulled     2m5s       kubelet, docker-desktop  Container image &quot;busybox:1.32.0&quot; already present on machine
+  Normal  Created    2m5s       kubelet, docker-desktop  Created container init-mysql
+  Normal  Started    2m5s       kubelet, docker-desktop  Started container init-mysql
+  Normal  Pulled     14s        kubelet, docker-desktop  Container image &quot;nginx:1.19.2-alpine&quot; already present on machine
+  Normal  Created    14s        kubelet, docker-desktop  Created container nginx
+  Normal  Started    14s        kubelet, docker-desktop  Started container nginx
+</code></pre>
+
+<p>也就是可以在<code>initContainers</code>里做一些主容器启动前的初始化工作，比如检测依赖的服务是否启动。</p>
+
+<h1 id="三-pod生命周期">三、 Pod生命周期</h1>
+
+<p><img src="../../static/uploads/k8s-pod-lifecycle.png" alt="" /></p>
+
+<h2 id="3-1-pause">3.1 pause</h2>
+
+<p><code>Pause容器</code>，全称infrastucture container（又叫infra）基础容器。每个<code>Pod</code>里运行着一个特殊的被称之为<code>Pause</code>的容器，其他容器则为业务容器，这些业务容器共享<code>Pause</code>容器的网络栈和<code>Volume</code>挂载卷，因此他们之间通信和数据交换更为高效。在设计时可以充分利用这一特性，将一组密切相关的服务进程放入同一个<code>Pod</code>中；同一个<code>Pod</code>里的容器之间仅需通过<code>localhost</code>就能互相通信。</p>
+
+<h2 id="3-2-init-container">3.2 init container</h2>
+
+<p>在主容器（<code>Main Container</code>）启动之前执行的容器，串行执行，只有前一个<code>InitContainer</code>正常退出，下一个才会继续。如果<code>InitContainer</code>失败，则会根据策略重启<code>Pod</code>。相当于在主容器启动之前，可以通过<code>Init Conntainer</code>容器做一些准备工作。</p>
+
+<h2 id="3-3-hook">3.3 hook</h2>
+
+<p><code>Kubernetes</code>为容器提供了两种生命周期钩子：</p>
+
+<ul>
+<li><code>post start hook</code>：于容器创建完成之后立即运行的钩子程序。</li>
+<li><code>pre stop hook</code>：容器终止之前立即运行的程序，是以同步方式的进行，因此其完成之前会阻塞 删除容器的调用</li>
+</ul>
+
+<p>备注：钩子程序的执行方式有<code>Exec</code>和<code>HTTP</code>两种。</p>
+
+<h2 id="3-4-readiness">3.4 readiness</h2>
+
+<p>就绪检测：用于判定容器是否准备就绪，就绪之后就可以接受<code>Service</code>过来的请求。</p>
+
+<pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: readiness-pod
+  labels:
+    name: readiness-pod
+spec:
+  containers:
+  - name: readiness
+    image: nginx:1.19.2-alpine
+    readinessProbe:
+      httpGet:
+        path: /index.html
+        port: 80
+      initialDelaySeconds: 60
+      periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: readiness-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 38000
+    targetPort: 80
+  selector:
+    name: readiness-pod
+</code></pre>
+
+<p>通过httpGet方式检测Nginx80端口是不是好的，如果获取到的状态码是2xx和3xx则认为是正常的，否则失败。设置了初次间隔是60s。所以在60s之内从外部访问不了容器，svc的Endpoints没有值。待第一次检测通过之后svc的Endpoints才有值。</p>
+
+<pre><code>$ kubectl describe svc readiness-svc
+Name:                     readiness-svc
+Namespace:                default
+Labels:                   &lt;none&gt;
+Annotations:              kubectl.kubernetes.io/last-applied-configuration:
+                            {&quot;apiVersion&quot;:&quot;v1&quot;,&quot;kind&quot;:&quot;Service&quot;,&quot;metadata&quot;:{&quot;annotations&quot;:{},&quot;name&quot;:&quot;readiness-svc&quot;,&quot;namespace&quot;:&quot;default&quot;},&quot;spec&quot;:{&quot;ports&quot;:[{&quot;port&quot;:38...
+Selector:                 name=readiness-pod
+Type:                     LoadBalancer
+IP:                       10.104.144.208
+LoadBalancer Ingress:     localhost
+Port:                     &lt;unset&gt;  38000/TCP
+TargetPort:               80/TCP
+NodePort:                 &lt;unset&gt;  30381/TCP
+Endpoints:
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   &lt;none&gt;
+</code></pre>
+
+<p>当我们进容器之后将<code>index.html</code>改个名，检测之后发现<code>svc</code>的<code>Endpoints</code>又没值了，相当于认为容器异常了，将流量不发给后端容器了。所以<code>readiness</code>检测影响请求是否转发给容器。</p>
+
+<h2 id="3-5-liveness">3.5 liveness</h2>
+
+<p>存活检测：用于判定主容器是否处于存活状态。看示例：</p>
+
+<pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-pod
+spec:
+  containers:
+  - name: liveness
+    image: busybox:1.32.0
+    command:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy; sleep 600
+    livenessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/healthy
+</code></pre>
+
+<p>启动了一个<code>busybox</code>容器，容器启动后创建了一个文件，然后<code>30s</code>后将这个文件删掉了。增加了一个存活检测，默认是每<code>10s</code>检测一次判断该文件。如果文件不存在<code>cat</code>返回值不为0则认为容器有异常。从日志可以看到检测失败后容器重启了。</p>
+
+<pre><code>$ kubectl describe pod liveness-pod
+Events:
+  Type     Reason     Age                From                     Message
+  ----     ------     ----               ----                     -------
+  Normal   Scheduled  &lt;unknown&gt;          default-scheduler        Successfully assigned default/liveness-pod to docker-desktop
+  Normal   Pulled     78s                kubelet, docker-desktop  Container image &quot;busybox:1.32.0&quot; already present on machine
+  Normal   Created    78s                kubelet, docker-desktop  Created container liveness
+  Normal   Started    78s                kubelet, docker-desktop  Started container liveness
+  Warning  Unhealthy  21s (x3 over 41s)  kubelet, docker-desktop  Liveness probe failed: cat: can't open '/tmp/healthy': No such file or directory
+  Normal   Killing    21s                kubelet, docker-desktop  Container liveness failed liveness probe, will be restarted
+  Normal   Pulled     23s (x2 over 110s)  kubelet, docker-desktop  Container image &quot;busybox:1.32.0&quot; already present on machine
+  Normal   Created    23s (x2 over 110s)  kubelet, docker-desktop  Created container liveness
+  Normal   Started    23s (x2 over 110s)  kubelet, docker-desktop  Started container liveness
+  
+$ kubectl get pod
+NAME           READY   STATUS    RESTARTS   AGE
+liveness-pod   1/1     Running   1          2m54s
+</code></pre>
+
+<p>所以，<code>liveness</code>检测如果失败了会重启容器。</p>
+
+<h1 id="四-小结">四、小结</h1>
+
+<p><code>Pod</code>是<code>k8s</code>的基础资源，着重介绍了<code>Pod</code>的资源清单配置方式以及对<code>Pod</code>的生命周期，并通过一些简单的示例来进行说明。下一篇接着看看跟<code>Pod</code>相关的一些存储用法。</p>
+
+<hr />
+
+<ul>
+<li>[1] <a href="https://www.cnblogs.com/weihanli/p/12018469.html">k8s 使用 Init Container 确保依赖的服务已经启动</a></li>
+<li>[2] <a href="https://www.dazhuanlan.com/2019/11/04/5dbf2f7da84c5/">Kubernetes Pod 生命周期和重启策略</a></li>
+<li>[3] <a href="https://www.cnblogs.com/zhanglianghhh/p/13493337.html">Kubernetes K8S之Pod 生命周期与init container初始化容器详解</a></li>
+<li>[4] <a href="https://www.cnblogs.com/benjamin77/p/9940266.html">k8s的存储Volume</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-09.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-09.html">2020-09-12 23:18</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/k8s-yaml.html">Kubernetes基础 ( 2 ) - 资源清单</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/k8s-storage.html">Kubernetes基础 ( 4 ) - 存储</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 3 ) - Pod.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 3 ) - Pod.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

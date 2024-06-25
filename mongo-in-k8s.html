@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes容器化 - MongoDB</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes容器化 - MongoDB</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>尝试在本地运行<code>Mongo</code>:</p>
+
+<pre><code>$ docker pull mongo:3.4.24
+
+$ docker run --name mongo -d mongo:3.4.24
+$ docker ps
+CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS         PORTS       NAMES
+50c4b61834a0   mongo:3.4.24   &quot;docker-entrypoint.s…&quot;   3 seconds ago   Up 2 seconds   27017/tcp   mongo
+</code></pre>
+
+<p>系统为：<code>Ubuntu 16.04.6 LTS</code>，通过命令行也可以连接：</p>
+
+<pre><code>$ mongo --host 127.0.0.1 --port 27017
+MongoDB shell version v3.4.24
+connecting to: mongodb://127.0.0.1:27017/
+MongoDB server version: 3.4.24
+Welcome to the MongoDB shell.
+</code></pre>
+
+<p>同<code>Mysql</code>类似，也可以通过环境变量来设置<code>root</code>账号：</p>
+
+<p><code>MONGO_INITDB_ROOT_USERNAME</code>, <code>MONGO_INITDB_ROOT_PASSWORD</code></p>
+
+<blockquote>
+<p>These variables, used in conjunction, create a new user and set that user&rsquo;s password. This user is created in the <code>admin</code> authentication database and given the role of <code>root</code>), which is a &ldquo;superuser&rdquo; role).</p>
+</blockquote>
+
+<p>尝试运行之后就可以在容器里部署了，这里部署为单节点Mongo服务。</p>
+
+<p><strong>第一步，</strong>创建pv/pvc</p>
+
+<pre><code>apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongo-test-pv
+  labels:
+    project: mongo-test-pv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: nasplugin.csi.alibabacloud.com
+    volumeHandle: mongo-test-pv
+    volumeAttributes:
+      server: &quot;nasid.cn-hangzhou.nas.aliyuncs.com&quot;
+      path: &quot;/mongo-test&quot;
+  mountOptions:
+  - nolock,tcp,noresvport
+  - vers=3
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mongo-test-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  selector:
+    matchLabels:
+      project: mongo-test-pv
+</code></pre>
+
+<p><strong>第二步</strong>，创建Service</p>
+
+<pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-test
+  namespace: default
+  labels:
+    project: mongo-test
+spec:
+  selector:
+    project: mongo-test
+  ports:
+  - name: mongo
+    port: 27017
+    protocol: TCP
+  clusterIP: None
+</code></pre>
+
+<p><strong>第三步</strong>，创建ConfigMap，如果开启授权的话可以在运行安装成功之后再开启。</p>
+
+<pre><code>apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-test-config
+  namespace: default
+data:
+  mongodb.conf: |
+    storage:
+        dbPath: &quot;/data/db&quot;
+        journal:
+          enabled: true
+    systemLog:
+        destination: file
+        logAppend: true
+        path: &quot;/data/mongodb.log&quot;
+    net:
+        port: 27017
+        bindIp: 0.0.0.0
+    processManagement:
+        fork: false
+        pidFilePath: &quot;/data/mongod.pid&quot;
+    #security:
+    #    authorization: enabled
+    operationProfiling:
+        slowOpThresholdMs: 3000
+        mode: slowOp
+
+</code></pre>
+
+<p><strong>第四步</strong>，创建StatefulSet，<code>sync-host-time</code>从宿主机同步了时间。</p>
+
+<pre><code>apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-test
+  namespace: default
+  labels:
+    project: mongo-test
+spec:
+  serviceName: mongo-test
+  replicas: 1
+  selector:
+    matchLabels:
+      project: mongo-test
+  template:
+    metadata:
+      labels:
+        project: mongo-test
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: mongo
+        image: mongo:3.4.24
+        imagePullPolicy: IfNotPresent
+        command: [&quot;/bin/sh&quot;, &quot;-c&quot;, &quot;/usr/bin/mongod -f /data/conf/mongodb.conf&quot;]
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: mongo-test-pv
+          mountPath: /data/db/
+        - name: mongo-test-config
+          mountPath: /data/conf/
+        - name: sync-host-time
+          mountPath: /etc/localtime
+          readOnly: true
+      volumes:
+      - name: mongo-test-config
+        configMap:
+          name: mongo-test-config
+      - name: mongo-test-pv
+        persistentVolumeClaim:
+          claimName: mongo-test-pvc
+      - name: sync-host-time
+        hostPath:
+          path: /etc/localtime
+</code></pre>
+
+<p>运行上面编写的Yaml文件即可，正常一个单节点的Mongo就应该创建好了。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-05.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-05.html">2021-05-30 21:10</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/mongodb.html">MongoDB</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/mysql-in-k8s.html">Kubernetes容器化 - Mysql</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/zookeeper-in-k8s.html">Kubernetes容器化 - Zookeeper</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes容器化 - MongoDB.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes容器化 - MongoDB.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

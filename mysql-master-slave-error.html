@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Mysql主从同步出错</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Mysql主从同步出错</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>Mysql主从运行有一段时间了，没有出过什么问题。但最近接着出了两次问题，记录下方便后面排查！</p>
+
+<h1 id="slave-io-running和slave-sql-running均为yes-主从同步出错">Slave_IO_Running和Slave_SQL_Running均为YES，主从同步出错</h1>
+
+<p>首先还是确认下各服务器状态。查看主库状态正常，binlog position一直在变，进程状态也正常。</p>
+
+<pre><code>mysql&gt; show master status;
++------------------+-----------+--------------+------------------+
+| File             | Position  | Binlog_Do_DB | Binlog_Ignore_DB |
++------------------+-----------+--------------+------------------+
+| mysql-bin.000364 | 232554068 |              |                  |
++------------------+-----------+--------------+------------------+
+ 
+mysql&gt; show processlist;
++-------------+----------+-----------------------------------------------------------------------------+
+| Command     | Time     | State                                                                       |
++-------------+----------+-----------------------------------------------------------------------------+
+| Connect     | 14536445 | Slave has read all relay log; waiting for the slave I/O thread to update it |
+| Binlog Dump |    22459 | Master has sent all binlog to slave; waiting for binlog to be updated       |
++-------------+----------+-----------------------------------------------------------------------------+
+</code></pre>
+
+<p>查看重库状态，整体上看重库只是有延迟。</p>
+
+<pre><code>mysql&gt; show slave status\G;
+ 
+Master_Log_File: mysql-bin.000364
+Read_Master_Log_Pos: 246924389
+Relay_Log_File: mysql-relay-bin.3831269
+Relay_Log_Pos: 244389572
+Relay_Master_Log_File: mysql-bin.000363
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Seconds_Behind_Master: 23423
+ 
+mysql&gt; show processlist;
++---------+-------+-----------------------------------------------------------------------------+------------------+
+| Command | Time  | State                                                                       | Info             |
++---------+-------+-----------------------------------------------------------------------------+------------------+
+| Connect | 22800 | Waiting for master to send event                                            | NULL             |
+| Connect |    99 | Slave has read all relay log; waiting for the slave I/O thread to update it | NULL             |
++---------+-------+-----------------------------------------------------------------------------+------------------+
+</code></pre>
+
+<p>但等一段时间查看重库却一直不更新，重启后Seconds_Behind_Master为0，Slave_IO_Running和Slave_SQL_Running状态均为YES。确认了Master_Host、Master_User等参数，也匹配了Master_Server_Id都是正常的。在网上也查到了SQL_SLAVE_SKIP_COUNTER来跳过一步操作，但因为对数据完整性要求比较高，担心产生数据异常而不敢操作。于是到此基本上就没辙了。</p>
+
+<p>等一天还找不到就打算重做了，但重做也不是办法，总得找到问题，数据比较多也不可能每次去重做。之前查看过Binlog没有明显发现，于是还是得再去查看下Binlog看能不能发现什么？</p>
+
+<pre><code>mysqlbinlog mysql-relay-bin.3831269 --start-position=244389572 --stop-position=246924461 | more
+mysqlbinlog mysql-relay-bin.3831269 --start-datetime=&quot;2014-08-07 21:30:00&quot; --stop-datetime=&quot;2014-08-07 21:35:00&quot; --base64-output=decode-rows -v | more
+</code></pre>
+
+<p>binlog基于行的复制带上了&ndash;base64-output=decode-rows -v参数。</p>
+
+<p>慢慢的还真的发现了点东西，发现有执行很多的删除语句，当通过wc统计时发现竟然有70多万。在通过业务查看是有执行一条SQL，删除表中的所有记录，数据太多，此时查看主从这个表的记录，主库为空，重库记录全在，那可能就是这个原因导致的。该操作可以跳过，于是尝试跳过之：</p>
+
+<pre><code>mysql&gt;slave stop;
+mysql&gt;SET GLOBAL SQL_SLAVE_SKIP_COUNTER = 1;
+mysql&gt;slave start;
+</code></pre>
+
+<p>跳过后Mysql恢复正常，最后手动清空重库中该表的数据。至于为什么这个大的删除导致重库停止，还有待深究。</p>
+
+<h1 id="max-allowed-packet限制导致主从同步出错">max_allowed_packet限制导致主从同步出错</h1>
+
+<p>产生的原因也是执行了一个较大的更新，往数据库中更新几十兆的数据（可见更新的不合理），导致主从同步出错，查看重库状态显示</p>
+
+<blockquote>
+<p>Last_IO_Error: Got fatal error 1236 from master when reading data from binary log:&lsquo;log event entry exceeded max_allowed_packet; Increase max_allowed_packet on master&rsquo;</p>
+</blockquote>
+
+<p>有明显的错误描述好查很多，描述上说增大主库的max_allowed_packet。<strong>max_allowed_packet</strong></p>
+
+<blockquote>
+<p>mysql 服务是通过网络包来传输数据的(通信信息包是指发送至MySQL服务器的单个SQL语句或发送至客户端的单一行),mysql协议能够识别的数据包的大小是由max_allowed_packet控制的。当MySQL客户端或mysqld服务器收到大于max_allowed_packet字节的信息包时,将发出“log event entry exceeded max_allowed_packet;”错误,并关闭连接。就像此次主从复制遇到的，IO 进程从主库获取日志，但是单个日志中的sql 大小超过了max_allowed_packet的限制，于是报错,IO thread 进程停止，sql thread 显示为yes。 对于客户端,如果通信信息包过大,在执行查询期间,可能会遇到“丢失与MySQL服务器的连接”错误。</p>
+
+<p>参考：<a href="http://blog.itpub.net/22664653/viewspace-752580/">http://blog.itpub.net/22664653/viewspace-752580/</a></p>
+</blockquote>
+
+<p>停止重库，主从都调整下，然后启动重库即可！</p>
+
+<pre><code>stop slave;
+set global max_allowed_packet=1035543552;
+start slave;
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2014-08.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2014-08.html">2014-08-07 20:13</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/mysql.html">Mysql</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/http-get-length.html">HTTP中GET长度问题</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/rsa-usage.html">RSA常见用法整理</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\mysql\Mysql主从同步出错.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\mysql\Mysql主从同步出错.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

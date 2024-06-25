@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Rsync文件同步</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Rsync文件同步</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-简介">一、简介</h1>
+
+<p>rsync是一个类似scp的同步工具，会检测变化的文件，只传输有变化的部分，同时可以方便的保留原文件的所有者、时间、软连等信息。可以直接当命令行工具使用，也可以在服务端以后台的形式使用。</p>
+
+<h1 id="二-安装">二、安装</h1>
+
+<pre><code>$ rpm -qa | grep rsync
+rsync-3.0.6-9.el6_4.1.x86_64
+
+$ yum -y install rsync
+</code></pre>
+
+<h1 id="三-客户端工具">三、客户端工具</h1>
+
+<p>可以当命令使用，安装之后不需要做任何配置，直接使用即可，用法和scp差不多。</p>
+
+<h2 id="3-1-同步本机目录">3.1 同步本机目录</h2>
+
+<pre><code>$ rsync -av /demo/backup/ /demo/package/
+</code></pre>
+
+<p>将<code>backup</code>目录下的所有文件同步到<code>package</code>目录下。需要注意<code>backup</code>后面的斜杠，有斜杠的时候表示目录下的文件，没有斜杠的时候同步的是backup目录。</p>
+
+<h2 id="3-2-同步本地到远程">3.2 同步本地到远程</h2>
+
+<pre><code>$ rsync -avzP /data root@172.16.0.1:/
+</code></pre>
+
+<h2 id="3-3-同步远程到本地">3.3 同步远程到本地</h2>
+
+<pre><code>$ rsync -avzP root@172.16.0.1:/data/ /data/
+</code></pre>
+
+<h1 id="四-服务端运行">四、服务端运行</h1>
+
+<p><code>rsync</code>也可以在服务端以后台形式运行，默认会启动873端口。该方式需要做一些简单的配置。</p>
+
+<h2 id="4-1-密码配置">4.1 密码配置</h2>
+
+<p>创建文件并设置文件权限为600</p>
+
+<pre><code>$ vi /etc/rsyncd.pass
+rsync:123456
+
+$ chmod 600 /etc/rsyncd.pass
+</code></pre>
+
+<h2 id="4-2-主配置文件">4.2 主配置文件</h2>
+
+<p>配置文件位于<code>/etc/rsyncd.conf</code>，配置示例：</p>
+
+<pre><code>$ vi cat /etc/rsyncd.conf
+port = 873
+max connections = 50
+pid file = /var/run/rsyncd.pid
+lock file = /var/run/rsyncd.lock
+log file = /var/log/rsyncd.log
+# hosts allow = 172.16.0.0/12
+
+[demo]
+uid = rsync
+gid = rsync
+path = /demo/
+comment = this is rsync comment
+use chroot = yes
+read only = no
+auth users = rsync
+secrets file = /etc/rsyncd.pass
+</code></pre>
+
+<p>启动服务</p>
+
+<pre><code>$ systemctl start rsyncd
+</code></pre>
+
+<p>或者</p>
+
+<pre><code>$ rsync --daemon --config=/etc/rsyncd.conf
+</code></pre>
+
+<h2 id="4-3-客户端">4.3 客户端</h2>
+
+<p>客户端需要安装<code>rsync</code>，配置秘钥文件，文件中只需要写密码即可，然后给与600权限</p>
+
+<pre><code>$ rsync -avzP --password-file=rsync.secrets rsync@172.16.196.200::demo/ .
+</code></pre>
+
+<h1 id="五-示例">五、示例</h1>
+
+<p>同步目录下指定类型的文件(只同步py文件)</p>
+
+<pre><code>$ rsync -avzP --include=&quot;*.py&quot; --exclude=&quot;*.*&quot;  root@172.16.0.1:/data/project/  /data/project/
+</code></pre>
+
+<hr />
+
+<ul>
+<li>[1] <a href="http://www.ruanyifeng.com/blog/2020/08/rsync.html">rsync 用法教程</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2018-08.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2018-08.html">2018-08-01 15:21</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/运维.html">运维</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/crawler-report-2018.html">2018上半年互联网恶意爬虫分析：从全景视角看爬虫与反爬虫</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/ip.html">IP网段划分</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\Rsync文件同步.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\Rsync文件同步.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

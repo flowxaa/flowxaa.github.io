@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>常见经典算法整理</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">常见经典算法整理</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-排序算法">一、排序算法</a>
+<ul>
+<li><a href="#1-1-冒泡排序">1.1 冒泡排序</a></li>
+<li><a href="#1-2-选择排序">1.2 选择排序</a></li>
+<li><a href="#1-3-插入排序">1.3 插入排序</a></li>
+<li><a href="#1-4-归并排序">1.4 归并排序</a></li>
+<li><a href="#1-5-快速排序">1.5 快速排序</a></li>
+</ul></li>
+<li><a href="#二-查找算法">二、查找算法</a>
+<ul>
+<li><a href="#2-1-顺序查找">2.1 顺序查找</a></li>
+<li><a href="#2-2-二分查找">2.2 二分查找</a></li>
+<li><a href="#2-3-插值查找">2.3 插值查找</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-排序算法">一、排序算法</h1>
+
+<h2 id="1-1-冒泡排序">1.1 冒泡排序</h2>
+
+<p><img src="../../static/uploads/algorithm-bubble.gif" alt="" /></p>
+
+<pre><code class="language-go">func BubbleSort(nums []int) {
+	for i := 0; i &lt; len(nums); i++ {
+		for j := 0; j &lt; len(nums)-i-1; j++ {
+			if nums[j] &gt; nums[j+1] {
+				nums[j], nums[j+1] = nums[j+1], nums[j]
+			}
+		}
+	}
+}
+</code></pre>
+
+<h2 id="1-2-选择排序">1.2 选择排序</h2>
+
+<p><img src="../../static/uploads/algorithm-selection.gif" alt="" /></p>
+
+<pre><code class="language-go">func SelectionSort(nums []int) {
+	for i := 0; i &lt; len(nums); i++ {
+		minIdx := i
+		for j := i; j &lt; len(nums); j++ {
+			if nums[minIdx] &gt; nums[j] {
+				minIdx = j
+			}
+		}
+		nums[i], nums[minIdx] = nums[minIdx], nums[i]
+	}
+}
+</code></pre>
+
+<h2 id="1-3-插入排序">1.3 插入排序</h2>
+
+<p><img src="../../static/uploads/algorithm-insertion.gif" alt="" /></p>
+
+<pre><code class="language-go">func InsertionSort(x []int) {
+	for i := 0; i &lt; len(x); i++ {
+		m := i
+		n := i - 1
+		for n &gt;= 0 {
+			if x[m] &gt; x[n] {
+				x[m], x[n] = x[n], x[m]
+			} else {
+				break
+			}
+			m--
+			n--
+		}
+	}
+}
+</code></pre>
+
+<h2 id="1-4-归并排序">1.4 归并排序</h2>
+
+<p><img src="../../static/uploads/algorithm-merge.gif" alt="" /></p>
+
+<pre><code class="language-go">func MergeSort(nums []int) []int {
+	if len(nums) &lt; 2 {
+		return nums
+	}
+	mid := len(nums) / 2
+	left := nums[0:mid]
+	right := nums[mid:]
+	return merge(MergeSort(left), MergeSort(right))
+}
+
+func merge(nums1 []int, nums2 []int) []int {
+	nums := make([]int, 0)
+
+	i := 0
+	j := 0
+	for i &lt; len(nums1) &amp;&amp; j &lt; len(nums2) {
+		if nums1[i] &lt;= nums2[j] {
+			nums = append(nums, nums1[i])
+			i++
+		} else {
+			nums = append(nums, nums2[j])
+			j++
+		}
+	}
+	if i &lt; len(nums1) {
+		nums = append(nums, nums1[i:]...)
+	}
+	if j &lt; len(nums2) {
+		nums = append(nums, nums2[j:]...)
+	}
+
+	return nums
+}
+</code></pre>
+
+<h2 id="1-5-快速排序">1.5 快速排序</h2>
+
+<p><img src="../../static/uploads/algorithm-quick.gif" alt="" /></p>
+
+<pre><code class="language-python">def QuickSort(arr):
+    if(len(arr)) &lt; 2:
+        return arr
+    mid = arr[0]
+    left, right = [], []
+    for k in range(1, len(arr)):
+        if mid &gt;= arr[k]:
+            left.append(arr[k])
+        else :
+            right.append(arr[k])
+    return QuickSort(left) + [mid] + QuickSort(right)
+</code></pre>
+
+<h1 id="二-查找算法">二、查找算法</h1>
+
+<h2 id="2-1-顺序查找">2.1 顺序查找</h2>
+
+<p>最常见的随机查找方式，时间复杂度O(n)</p>
+
+<pre><code class="language-go">func Search(nums []int, k int) int {
+	for i, v := range nums {
+		if v == k {
+			return i
+		}
+	}
+	return -1
+}
+</code></pre>
+
+<h2 id="2-2-二分查找">2.2 二分查找</h2>
+
+<pre><code class="language-go">func BinarySearch(nums []int, k int) int {
+	left := 0
+	right := len(nums) - 1
+	if k &lt; nums[left] || k &gt; nums[right] {
+		return -1
+	}
+	for left &lt;= right {
+		mid := left + (right-left)/2
+		if nums[mid] &gt; k {
+			right = mid - 1
+		} else if nums[mid] &lt; k {
+			left = mid + 1
+		} else {
+			return mid
+		}
+	}
+	return -1
+}
+</code></pre>
+
+<p>前提需要元素是有序的，当查找的元素和中间节点比较时，如果查找元素比中间节点大则说明元素只可能在右半区，比其小则只可能在左半区，依次类推查找下去。</p>
+
+<h2 id="2-3-插值查找">2.3 插值查找</h2>
+
+<pre><code class="language-go">func InterpolationSearch(nums []int, k int) int {
+	left := 0
+	right := len(nums) - 1
+	if k == nums[left] {
+		return left
+	}
+	for k &gt;= nums[left] &amp;&amp; k &lt;= nums[right] &amp;&amp; nums[left] != nums[right] {
+		mid := left + (right-left)*(k-nums[left])/(nums[right]-nums[left])
+		if nums[mid] &gt; k {
+			right = mid - 1
+		} else if nums[mid] &lt; k {
+			left = mid + 1
+		} else {
+			return mid
+		}
+	}
+	return -1
+}
+
+func main() {
+	nums := []int{1, 4, 6, 9, 11, 66, 78}
+	fmt.Println(InterpolationSearch(nums, 22))
+}
+</code></pre>
+
+<p>二分查找是每次进行一次折半，插值在二分查找基础上进行改进，通过插值公式对节点所在位置进行预测，适用于元素分布相对均匀的数据集。</p>
+
+<hr />
+
+<p>相关阅读：</p>
+
+<ul>
+<li>[1] <a href="https://visualgo.net/zh">Visualgo</a></li>
+<li>[2] <a href="https://www.cnblogs.com/onepixel/articles/7674659.html">十大经典排序算法（动图演示）</a></li>
+<li>[3] <a href="https://www.cnblogs.com/penghuwan/p/8021809.html">【算法】先生，您点的查找套餐到了（二分、插值和斐波那契查找）</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2022-09.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2022-09.html">2022-09-26 09:36</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/算法.html">算法</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/go-pprof.html">Golang性能分析 - PProf</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/gin.html">Gin框架学习</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\数据结构与算法\常见经典算法整理.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\数据结构与算法\常见经典算法整理.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

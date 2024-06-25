@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Golang ( 7 ) - 单元测试</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Golang ( 7 ) - 单元测试</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+</nav>
+
+<p>Go语言在工具链和标准库中提供了对测试的原生支持，<code>go test</code>会执行<code>_test.go</code>中复合TestXxx命名规则的测试函数。比如创建一个demo.go</p>
+
+<pre><code>package demo
+
+var times = 2
+
+func Mul(a, b int) int {
+	return a * b * times
+}
+</code></pre>
+
+<p>然后再同目录创建一个<code>demo_test.go</code>：</p>
+
+<pre><code>package demo
+
+import (
+	&quot;testing&quot;
+)
+
+func TestMul(t *testing.T) {
+	tests := map[string]struct {
+		a, b   int
+		expect int
+	}{
+		&quot;case1&quot;: {a: 1, b: 2, expect: 4},
+		&quot;case2&quot;: {a: 1, b: 0, expect: 0},
+		&quot;case3&quot;: {a: 2, b: 3, expect: 12},
+	}
+	for k, v := range tests {
+		t.Run(k, func(t *testing.T) {
+			if m := Mul(v.a, v.b); m != v.expect {
+				t.Errorf(&quot;Mul(%d, %d) = %d Error, Expect %d&quot;, v.a, v.b, m, v.expect)
+			}
+		})
+	}
+}
+</code></pre>
+
+<p>测试函数的签名需要是<code>func TestXXX( t *testing.T )</code>，通常编辑器上都有直接运行测试用例，或者直接手动执行：</p>
+
+<pre><code>$ go test -run ^TestMul$ . -v
+=== RUN   TestMul
+=== RUN   TestMul/case2
+=== RUN   TestMul/case3
+=== RUN   TestMul/case1
+--- PASS: TestMul (0.00s)
+    --- PASS: TestMul/case2 (0.00s)
+    --- PASS: TestMul/case3 (0.00s)
+    --- PASS: TestMul/case1 (0.00s)
+PASS
+ok      demo    0.199s
+</code></pre>
+
+<p><code>-run</code>：指定测试用例的名称，支持正则表达式，可不指定该参数</p>
+
+<p><code>-v</code>：显示详细输出</p>
+
+<p><strong>一、包内/外测试</strong></p>
+
+<p>根据测试代码与被测试包的位置关系可以分为包内测试和包外测试，包内测试是指将测试代码放在与被测包同名的包中，而包外测试则是将代码放在名为被测包名+“_test”的包中。他们之间的区别与联系是：</p>
+
+<ul>
+<li>包内测试可以访问该包下的所有符号，无论是导出的还是未导出；包外测试只能访问被导出的符号。</li>
+<li>包内测试本质上是一种面相实现的白盒测试，覆盖面更广，维护成本更高；包外测试则是一种面向接口的黑盒测试，可能存在测试盲区，但接口稳定性更高，</li>
+<li>包内可能存在循环引用的硬伤，包外测试可以解决。</li>
+</ul>
+
+<p>使用包外测试时如果想访问非导出的符号，可以通过在包内的测试文件来中转，该文件位于被测包名下，仅仅用来将被测包的内部符号在测试阶段暴露给包外测试代码，如：</p>
+
+<pre><code>//demo_test.go
+
+package demo
+
+var Times = times
+</code></pre>
+
+<p><strong>二、代码组织方式</strong></p>
+
+<p>第一种方式：平铺</p>
+
+<pre><code>func TextXx1(t *testing.T) {
+
+}
+
+func TextXx2(t *testing.T) {
+
+}
+</code></pre>
+
+<p>第二种方式：层级，如文章开头的示例。</p>
+
+<pre><code>func testXx1(t *testing.T) {
+
+}
+
+func testXx2(t *testing.T) {
+
+}
+
+func TextXxx(t *testing.T) {
+	t.Run(&quot;TestXx1&quot;, testXx1)
+	t.Run(&quot;TestXx2&quot;, testXx2)
+}
+</code></pre>
+
+<p><strong>三、测试固件</strong></p>
+
+<p>测试固件是指一个人造的、确定性的环境，一个测试用例或一个测试集。比如给一个测试函数创建和销毁。</p>
+
+<pre><code>func setUp(name string) func() {
+	fmt.Println(&quot;setUp for &quot;, name)
+	return func() {
+		fmt.Println(&quot;tearDown for &quot;, name)
+	}
+}
+
+func TestXx1(t *testing.T) {
+	defer setUp(&quot;TestXx1&quot;)()
+	fmt.Println(&quot;Run Test For TestXx1&quot;)
+}
+
+---------------------------------
+=== RUN   TestXx1
+setUp for  TestXx1
+Run Test For TestXx1
+tearDown for  TestXx1
+--- PASS: TestXx1 (0.00s)
+PASS
+ok  	demo	0.413s
+</code></pre>
+
+<p>1.14版本增加了testing.Cleanup方法上面可以改写为：</p>
+
+<pre><code>func TestXx1(t *testing.T) {
+	//defer setUp(&quot;TestXx1&quot;)()
+	t.Cleanup(setUp(&quot;TestXx1&quot;))
+	fmt.Println(&quot;Run Test For TestXx1&quot;)
+}
+</code></pre>
+
+<p>有时候我们需要将所有测试函数放在一个更大范围的测试固件环境中执行，这就是包级别测试固件。在1.4中增加了TestMain函数，使得可以创建和销毁包级别测试固件。</p>
+
+<pre><code>func setUp(name string) func() {
+	fmt.Println(&quot;setUp for &quot;, name)
+	return func() {
+		fmt.Println(&quot;tearDown for &quot;, name)
+	}
+}
+
+func TestXx1(t *testing.T) {
+	defer setUp(&quot;TestXx1&quot;)()
+	fmt.Println(&quot;Run Test For TestXx1&quot;)
+}
+
+func pkgSetUp(name string) func() {
+	fmt.Println(&quot;package setUp for &quot;, name)
+	return func() {
+		fmt.Println(&quot;package tearDown for&quot;, name)
+	}
+}
+
+func TestMain(m *testing.M) {
+	defer pkgSetUp(&quot;demo_test&quot;)()
+	m.Run()
+}
+
+---------------------------------
+package setUp for  demo_test
+=== RUN   TestXx1
+setUp for  TestXx1
+Run Test For TestXx1
+tearDown for  TestXx1
+--- PASS: TestXx1 (0.00s)
+PASS
+package tearDown for demo_test
+ok  	demo	0.423s
+</code></pre>
+
+<p><strong>基准测试</strong></p>
+
+<p>可以像对普通单元测试那样再&rdquo;_test.go&rdquo;文件中创建被测对象的性能基准测试，以Benchmark前缀开头，如：</p>
+
+<pre><code>func BenchmarkMul(b *testing.B) {
+	for n := 0; n &lt; b.N; n++ {
+		Mul(1, 2)
+	}
+}
+</code></pre>
+
+<p>上面是基于顺序执行的性能基准测试，如果想执行并行执行的基准测试，可以按如下操作：</p>
+
+<pre><code>func BenchmarkXxx(b *testing.B) {
+	b.RunParallel(func(p *testing.PB) {
+		for p.Next() {
+			Mul(1, 2)
+		}
+	})
+}
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-02.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-02.html">2021-02-01 21:01</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/golang.html">Golang</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/k8s-online.html">Kubernetes项目实践 - ACK集群</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/ack-network-issue.html">阿里云ACK集群中的网络问题</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\go\Golang ( 7 ) - 单元测试.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\go\Golang ( 7 ) - 单元测试.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

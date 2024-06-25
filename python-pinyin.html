@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python实用库 ( 1 ) - 汉字转拼音</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python实用库 ( 1 ) - 汉字转拼音</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>日常中偶然会碰到将中文转拼音的需求，<code>mozillazg/python-pinyin</code>库应该可以满足日常的需求。</p>
+
+<h1 id="一-汉字转拼音">一、汉字转拼音</h1>
+
+<h2 id="1-1-安装方式">1.1 安装方式</h2>
+
+<pre><code>$ pip install pypinyin
+
+$ pypinyin 你好
+nǐ hǎo
+</code></pre>
+
+<h2 id="1-2-基本使用">1.2 基本使用</h2>
+
+<pre><code>from pypinyin import pinyin, lazy_pinyin, Style
+
+sentence = &quot;你好，世界。&quot;
+
+print(pinyin(sentence))
+# [['nǐ'], ['hǎo'], ['，'], ['shì'], ['jiè'], ['。']]
+
+print(pinyin(sentence, style=Style.NORMAL))
+# [['ni'], ['hao'], ['，'], ['shi'], ['jie'], ['。']]
+
+print(pinyin(sentence, style=Style.FIRST_LETTER))
+# [['n'], ['h'], ['，'], ['s'], ['j'], ['。']]
+
+print(lazy_pinyin(sentence))
+# ['ni', 'hao', '，', 'shi', 'jie', '。']
+</code></pre>
+
+<p><strong>style说明：</strong></p>
+
+<ul>
+<li><strong>Style.NORMAL</strong>: 普通风格，即不带声调。如：<code>pin yin</code></li>
+<li><strong>Style.TONE</strong>: 声调风格，拼音声调在韵母第一个字母上(默认的风格)。如：<code>pīn yīn</code></li>
+<li><strong>Style.TONE2</strong>: 声调风格 2，即拼音声调以数字形式在各个拼音之后，用数字 [0-4] 进行表示。如：<code>pin1 yin1</code></li>
+<li><strong>Style.TONE3</strong>: 声调风格 3，即拼音声调以数字形式在注音字符之后，用数字 [0-4] 进行表示。如：<code>pi1n yi1n</code></li>
+<li><strong>Style.INITIALS</strong>: 声母风格，只返回各个拼音的声母部分。对于没有声母的汉字，返回空白字符串。如：<code>中国</code> 的拼音 <code>zh</code> <code>g</code></li>
+<li><strong>Style.FIRST_LETTER</strong>: 首字母风格，只返回拼音的首字母部分。如：<code>p y</code></li>
+</ul>
+
+<h2 id="1-3-翻译示例">1.3 翻译示例</h2>
+
+<blockquote>
+<p>《围城》一九四七年在上海初版，一九四八年再版，一九四九年三版，以后国内没有重印过。偶然碰见它的新版，那都是香港的“盗印”本。没有看到台湾的“盗印”，据说在那里它是禁书。美国哥伦比亚大学夏志清教授的英文著作里对它作了过高的评价，导致了一些西方语言的译本。日本京都大学荒井健教授很久以前就通知我他要翻译，近年来也陆续在刊物上发表了译文。现在，人民文学出版社建议重新排印，以便原著在国内较易找着，我感到意外和忻辛。</p>
+
+<p>《 wéi chéng 》 yī jiǔ sì qī nián zài shàng hǎi chū bǎn ， yī jiǔ sì bā nián zài bǎn ， yī jiǔ sì jiǔ nián sān bǎn ， yǐ hòu guó nèi méi yǒu chóng yìn guò 。 ǒu rán pèng jiàn tā de xīn bǎn ， nà dōu shì xiāng gǎng de “ dào yìn ” běn 。 méi yǒu kàn dào tái wān de “ dào yìn ”， jù shuō zài nà lǐ tā shì jìn shū 。 měi guó gē lún bǐ yà dà xué xià zhì qīng jiào shòu de yīng wén zhù zuò lǐ duì tā zuò le guò gāo de píng jià ， dǎo zhì le yī xiē xī fāng yǔ yán de yì běn 。 rì běn jīng dū dà xué huāng jǐng jiàn jiào shòu hěn jiǔ yǐ qián jiù tōng zhī wǒ tā yào fān yì ， jìn nián lái yě lù xù zài kān wù shàng fā biǎo le yì wén 。 xiàn zài ， rén mín wén xué chū bǎn shè jiàn yì chóng xīn pái yìn ， yǐ biàn yuán zhù zài guó nèi jiào yì zhǎo zháo ， wǒ gǎn dào yì wài hé xīn xīn 。</p>
+</blockquote>
+
+<p>看起来效果还不错，更多用法参考：<code>https://github.com/mozillazg/python-pinyin</code></p>
+
+<h1 id="二-拼写检查">二、拼写检查</h1>
+
+<h2 id="2-1-简介">2.1 简介</h2>
+
+<ul>
+<li><a href="https://github.com/rfk/pyenchant">https://github.com/rfk/pyenchant</a></li>
+</ul>
+
+<h2 id="2-2-安装">2.2 安装</h2>
+
+<pre><code>pip install pyenchant -i  https://pypi.douban.com/simple
+</code></pre>
+
+<h2 id="2-3-示例">2.3 示例</h2>
+
+<p>参考文档： <a href="https://www.jianshu.com/p/96c01666aeeb">https://www.jianshu.com/p/96c01666aeeb</a></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2017-01.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2017-01.html">2017-01-02 21:53</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/shadowsocks.html">Shadowsocks</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/python-jieba.html">Python实用库 ( 2 ) - 结巴分词</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python实用库 ( 1 ) - 汉字转拼音.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python实用库 ( 1 ) - 汉字转拼音.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>CentOS（ 6 ）- 生命周期结束</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">CentOS（ 6 ）- 生命周期结束</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p><code>CentOS</code>开发者邮件列表显示，<code>CentOS 6</code>已于11月30日<code>EOL</code>。</p>
+
+<p><img src="../../static/uploads/centos-6-eol.png" alt="" /></p>
+
+<p>邮件还提到，<code>CentOS 6.10</code>的目录将在12月第一周被迁移至<code>vault.centos.org</code>。软件包仍在以下位置提供：</p>
+
+<pre><code>http://vault.centos.org/centos/6.10/
+</code></pre>
+
+<p>迁移工作完成后，vault.centos.org 中的目录不会再接收到任何更新，亦即意味着<code>CentOS 6</code>的安全问题不会再被处理。另外，mirrorlist.centos.org 中<code>CentOS 6</code>的节点将删除关于它的内容，如果你还是通过此前的镜像获取内容会收到Invalid release/repo/arch combination的提醒。</p>
+
+<p><img src="../../static/uploads/centos-6-tips.png" alt="" /></p>
+
+<p><code>CentOS</code>由<code>Red Hat Enterprise Linux</code>源代码重新编译而成，每个大版本的<code>CentOS</code>都会获得<code>10</code>年的支持（通过安全更新方式），<code>CentOS 6</code>正式发布的时间是2011年7月。</p>
+
+<hr />
+
+<p><code>EOL</code>之后再通过<code>yum</code>安装软件就会提示<code>404 Not Found</code>，需要切换<code>yum</code>源。</p>
+
+<pre><code>$ yum install vsftpd
+已加载插件：security
+设置安装进程
+http://mirrors.cloud.aliyuncs.com/centos/6/os/x86_64/repodata/repomd.xml: 
+[Errno 14] PYCURL ERROR 22 - &quot;The requested URL returned error: 404 Not Found&quot;
+
+尝试其他镜像。
+To address this issue please refer to the below wiki article
+
+https://wiki.centos.org/yum-errors
+
+If above article doesn't help to resolve this issue please use https://bugs.centos.org/.
+
+http://mirrors.cloud.aliyuncs.com/epel/6/x86_64/repodata/repomd.xml: 
+[Errno 14] PYCURL ERROR 22 - &quot;The requested URL returned error: 404 Not Found&quot;
+尝试其他镜像。
+http://mirrors.cloud.aliyuncs.com/centos/6/extras/x86_64/repodata/repomd.xml: 
+[Errno 14] PYCURL ERROR 22 - &quot;The requested URL returned error: 404 Not Found&quot;
+尝试其他镜像。
+http://mirrors.cloud.aliyuncs.com/centos/6/updates/x86_64/repodata/repomd.xml: 
+[Errno 14] PYCURL ERROR 22 - &quot;The requested URL returned error: 404 Not Found&quot;
+</code></pre>
+
+<pre><code>$ yum makecache
+已加载插件：auto-update-debuginfo, fastestmirror
+Loading mirror speeds from cached hostfile
+http://mirrors.cloud.aliyuncs.com/centos/6/os/x86_64/repodata/repomd.xml: 
+[Errno 14] PYCURL ERROR 22 - &quot;The requested URL returned error: 404 Not Found&quot;
+</code></pre>
+
+<p>阿里云建议升级系统，继续使用的话需要切换到<code>vault</code>源，即历史源。</p>
+
+<h3 id="vpc网络网络">vpc网络网络：</h3>
+
+<p><strong>/etc/yum.repos.d/CentOS-Base.repo</strong>:</p>
+
+<pre><code>[base]
+name=CentOS-6.10
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.cloud.aliyuncs.com/centos-vault/6.10/os/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.cloud.aliyuncs.com/centos-vault/RPM-GPG-KEY-CentOS-6
+
+[updates]
+name=CentOS-6.10
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.cloud.aliyuncs.com/centos-vault/6.10/updates/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.cloud.aliyuncs.com/centos-vault/RPM-GPG-KEY-CentOS-6
+
+[extras]
+name=CentOS-6.10
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.cloud.aliyuncs.com/centos-vault/6.10/extras/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.cloud.aliyuncs.com/centos-vault/RPM-GPG-KEY-CentOS-6
+</code></pre>
+
+<p><strong>/etc/yum.repos.d/epel.repo</strong></p>
+
+<pre><code>[epel]
+name=Extra Packages for Enterprise Linux 6 - $basearch
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.cloud.aliyuncs.com/epel-archive/6/$basearch
+gpgcheck=0
+gpgkey=http://mirrors.cloud.aliyuncs.com/epel-archive/RPM-GPG-KEY-EPEL-6
+</code></pre>
+
+<h3 id="经典网络">经典网络</h3>
+
+<p><strong>/etc/yum.repos.d/CentOS-Base.repo</strong>:</p>
+
+<pre><code>[base]
+name=CentOS-6.10
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.aliyuncs.com/centos-vault/6.10/os/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyuncs.com/centos-vault/RPM-GPG-KEY-CentOS-6
+
+[updates]
+name=CentOS-6.10
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.aliyuncs.com/centos-vault/6.10/updates/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyuncs.comm/centos-vault/RPM-GPG-KEY-CentOS-6
+
+[extras]
+name=CentOS-6.10
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.aliyuncs.com/centos-vault/6.10/extras/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyuncs.com/centos-vault/RPM-GPG-KEY-CentOS-6
+</code></pre>
+
+<p><strong>/etc/yum.repos.d/epel.repo</strong></p>
+
+<pre><code>[epel]
+name=Extra Packages for Enterprise Linux 6 - $basearch
+enabled=1
+failovermethod=priority
+baseurl=http://mirrors.aliyuncs.com/epel-archive/6/$basearch
+gpgcheck=0
+gpgkey=http://mirrors.aliyuncs.com/epel-archive/RPM-GPG-KEY-EPEL-6
+</code></pre>
+
+<p><strong>更新</strong></p>
+
+<pre><code>$ yum clean all
+$ yum makecache
+</code></pre>
+
+<hr />
+
+<ul>
+<li><a href="https://www.oschina.net/news/122584/centos6-eol">CentOS 6 生命周期结束</a></li>
+<li><a href="https://help.aliyun.com/document_detail/193569.htm">CentOS 6 EOL如何切换源</a></li>
+<li><a href="https://vault.centos.org/">CentOS vault</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-12.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-12.html">2020-12-08 19:30</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/运维.html">运维</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/centos.html">CentOS</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/airflow-data-migration.html">Apache Airflow数据库迁移</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/centos-8-eos.html">CentOS 8 落幕，“免费”的 RHEL 没了</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\CentOS（ 6 ）- 生命周期结束.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\CentOS（ 6 ）- 生命周期结束.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>GLIBC版本升级</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">GLIBC版本升级</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>安装<code>Seafile-6.2.6</code>对<code>GLIBC</code>版本有要求：<code>GLIBC_2.17 not found</code>。于是执行了下面操作：</p>
+
+<pre><code>scp root@172.16.1.100:/lib64/libc.so.6 /lib64/
+</code></pre>
+
+<p><strong>然后，就没有然后了&hellip;</strong></p>
+
+<p>终端立即、马上断开连接，所有服务无法运行，也无法通过<code>sh</code>、<code>vnc</code>进行远程连接，于是只好求助阿里云。修复后重新通过编译的方式进行安装成功。安装步骤如下：</p>
+
+<pre><code>$ wget http://ftp.gnu.org/gnu/glibc/glibc-2.18.tar.gz
+$ tar zxvf glibc-2.18.tar.gz
+$ cd glibc-2.18
+$ mkdir build
+$ cd build/
+$ ../configure --prefix=/usr
+$ make -j4
+$ make install
+</code></pre>
+
+<p>验证是否安装成功：</p>
+
+<pre><code>$ strings /lib64/libc.so.6 | grep GLIBC
+GLIBC_2.2.5
+GLIBC_2.2.6
+GLIBC_2.3
+GLIBC_2.3.2
+GLIBC_2.3.3
+GLIBC_2.3.4
+GLIBC_2.4
+GLIBC_2.5
+GLIBC_2.6
+GLIBC_2.7
+GLIBC_2.8
+GLIBC_2.9
+GLIBC_2.10
+GLIBC_2.11
+GLIBC_2.12
+GLIBC_2.13
+GLIBC_2.14
+GLIBC_2.15
+GLIBC_2.16
+GLIBC_2.17
+GLIBC_2.18
+GLIBC_PRIVATE
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2017-09.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2017-09.html">2017-09-12 18:08</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/运维.html">运维</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/order-holtwinter.html">外卖订单量预测异常报警模型实践</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/aliyun-disk-mount.html">阿里云磁盘挂载</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\GLIBC版本升级.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\GLIBC版本升级.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

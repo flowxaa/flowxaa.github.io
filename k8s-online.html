@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes项目实践 - ACK集群</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes项目实践 - ACK集群</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>最近考虑尝试下Kubernetes，将部分项目切换到容器中运行，向容器化再迈进一步，试错成本比较低，阿里云提供了ACK托管版、ACK专有版等各种版本，节点也可以按量付费，大大降低了容器化的配置成本，只需要通过可视化的配置就可以完成一个Kubernetes集群的搭建。</p>
+
+<p><img src="../../static/uploads/k8s-ship.jpg" alt="" /></p>
+
+<p>集群版本：</p>
+
+<ul>
+<li>Kubernetes版本：1.18.8</li>
+<li>Docker版本：19.3.5</li>
+<li>CentOS：7.8</li>
+</ul>
+
+<p>ACK托管版选项说明：</p>
+
+<ul>
+<li>Pod网络和Service的网络CIDR需要不同，且与VPC不重复。可根据集群大小填写合适的CIDR。</li>
+<li>API Server：K8s集群的API Server部分，配置连接信息后可以通过kubectl来访问集群。如果只是内网访问可以不用勾选<code>使用EIP暴露API Server</code>，也可以后续再配置。</li>
+<li>Ingress：负载均衡类型也选择了内网。开启Ingress会自动创建一个SLB，后面在这个SLB上绑EIP就可以对公网暴露。</li>
+</ul>
+
+<p>配置好之后就可以登录<code>Node</code>节点进行查看：</p>
+
+<ul>
+<li>Node 和 Pod的网络是互通的，这点很重要，解决了通信问题</li>
+<li>集群自动创建了2个SLB，一个用来访问API Server，一个是勾选的Ingress创建的Service，通过LoadBalancer方式暴露服务</li>
+<li>按照连接信息配置config，即可使用kubectl访问集群</li>
+</ul>
+
+<p>拿到集群后做了各种尝试发现都比较通畅，碰到一个问题是，通过Service来暴露Pod时，从Pod里访问Service的IP会出现时好时坏的情况，如果调度到自己就出问题。原因是Flannel默认设置不允许回环访问。如果有这种需求考虑用headless Service来暴露服务或者集群使用Terway网络组件。</p>
+
+<blockquote>
+<p>注：headless svc的地址只能在容器内部访问，可以通过ingress对外。</p>
+</blockquote>
+
+<p>容器部署上还没发现什么问题，省去了部署过程的繁琐，只需要侧重在应用的部署上即可。阿里云后台上提供了可视化的操作，当然也可以直接编写Yaml文件。</p>
+
+<p>整体上还比较顺利，迁移了几个项目，大体就是前面知识的线上实践，对部署过程中初次可能碰到的问题做下整理：</p>
+
+<p><strong>1. 网络</strong></p>
+
+<p>网络是基础资源，集群已经打通了容器与VPC，提供服务时如果是内部服务可以用Service，如果是外部可以通过Ingress来暴露服务。暴露之后访问流程如下：</p>
+
+<ul>
+<li>DNS服务解析域名到Ingress绑定的SLB公网IP上</li>
+<li>配置对应的Ingress，域名与DNS上配置一致，会连到Ingress的容器上</li>
+<li>后续就是Ingress到Service到Pod的流程</li>
+</ul>
+
+<p><strong>2. 镜像</strong></p>
+
+<p>阿里云提供了镜像仓库，可以直接使用。对于镜像的操作可以参考前面示例章节。</p>
+
+<p>项目可以按无状态部署，PHP项目镜像只打源文件，通过多个容器组合提供服务，拷贝源代码时需要注意下php-fpm运行账号的权限，以免目录无法写入。Python项目源文件打入镜像，基础镜像先搭建好。</p>
+
+<p>镜像上可以在CentOS这样的基础镜像上安装环境，也可以直接使用nginx、php的镜像组合提供服务。目前使用后面这种方式，大部分运行在Debian系统上。</p>
+
+<p><strong>3. 配置文件</strong></p>
+
+<p>配置文件可以通过<code>ConfigMap</code>来配置，然后挂载到对应的项目里去，支持挂载到指定目录，或者挂载到具体的配置文件。但基本都以文件的方式注入到容器里。用法可参考前面存储章节。</p>
+
+<p><strong>4. 会话保持</strong></p>
+
+<p>这可能项目运行中碰到的第一个问题，Ingress会随机解析到后台一个Pod上，如果Session存储在本地则刷新页面可能出现跳出登录的情况，原因是解析到另外一个Pod上了，而该Pod上没有会话信息。可参考<code>https://kubernetes.github.io/ingress-nginx/examples/affinity/cookie/</code>在Ingress上配置：</p>
+
+<pre><code>apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: &quot;cookie&quot;
+    nginx.ingress.kubernetes.io/affinity-mode: &quot;persistent&quot;
+    nginx.ingress.kubernetes.io/session-cookie-name: &quot;route&quot;
+spec:
+</code></pre>
+
+<p>作用是同一个客户端解析到同一个后端容器，以达到保持会话的目的。但如果Pod重启还是会出现退出登录的情况，这就需要会话支持分布式，可以将会话信息存储到缓存中。</p>
+
+<blockquote>
+<p>Service 也可以配置会话保持 sessionAffinity: ClientIP</p>
+</blockquote>
+
+<p><strong>5. Crontab</strong></p>
+
+<p>项目中总会出现些需要配置Cron的地方，用Cronjob的方式可以配置，但有两点不太爽的地方：</p>
+
+<ul>
+<li>计划任务比较多的时候要配置的Job比较多，</li>
+<li>计划任务需要有运行脚本的环境，更新时也需要同步更新</li>
+</ul>
+
+<p>这里用了两种方式来实现：</p>
+
+<p>一种是Cronjob的镜像只需支持curl请求， 配置Cron定时给项目发请求，项目收到请求后做后续处理。</p>
+
+<p>一种是单独起一个Deploy，包含运行环境，同时也安装了Crontab服务，Cron列表可以通过ConfigMap配置，容器启动时启动下Cron服务，加载任务列表并不退出容器，最后就和ecs里跑Crontab的流程一样。没直接打在线上服务的镜像中是因为线上服务往往有多个Pod，而脚本大部分只需要启动一次即可。</p>
+
+<blockquote>
+<p>在发版过程中，POD会替换，POD的退出可能影响正在执行的程序</p>
+</blockquote>
+
+<p><strong>6. 日志</strong></p>
+
+<p>部署的是无状态应用，日志存储在容器内部，随着pod生命周期的结束，容器内的日志就丢失了。在部署之前有考虑使用有状态还是无状态，相比而言还是更倾向于无状态，应用本身也不需要管理状态。</p>
+
+<p>日志目前可以直接使用阿里云日志，安装时就开启了日志服务，只需要在Yaml文件中通过简单的配置即可：</p>
+
+<pre><code>    spec:
+      restartPolicy: Always
+      containers:
+      - name: test
+        image: v20210125005
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env:
+        - name: aliyun_logs_test-api-log
+          value: /log/test.log
+        volumeMounts:
+        - name: test-api-log
+          mountPath: /log
+      volumes:
+      - name: test-api-log
+        emptyDir: {}
+</code></pre>
+
+<p>日中env的<code>name:aliyun_logs_{test-api-log}</code>定义了logstore的名字为test-api-log，收集的是test.log中的内容。当然也可以以CRD的方式来收集日志：</p>
+
+<pre><code>apiVersion: log.alibabacloud.com/v1alpha1
+kind: AliyunLogConfig
+metadata:
+  name: api-log
+spec:
+  logstore: aliyun-api-log-storename
+  lifeCycle: 30
+  logtailConfig:
+    inputType: file
+    configName: api-log
+    inputDetail:
+      logType: common_reg_log
+      logPath: /data/log
+      filePattern: api.log
+      logBeginRegex: '\d+-\d+-\d+\s+\d+:\d+:\d+,\d+\s+-\s+.*'
+      dockerFile: true
+      dockerIncludeEnv:
+        ALIYUN_LOGTAIL_USER_DEFINED_ID: &quot;api&quot;
+</code></pre>
+
+<p>具体的可参考：<a href="https://help.aliyun.com/document_detail/74878.html">https://help.aliyun.com/document_detail/74878.html</a></p>
+
+<p><strong>7. 有状态应用</strong></p>
+
+<p>对于有状态应用则可以通过挂载外部存储卷，比如NAS存储，支持动态或者静态的方式创建，挂上就可以解决有状态应用存储的问题了。</p>
+
+<p><strong>8. 监控与部署</strong></p>
+
+<p>集群上有<code>Prometheus</code>监控，可以观察到Node、Pod的运行情况，集群装了metrics，也通过<code>kubectl top node/pod</code>来查看资源使用情况。</p>
+
+<p>项目部署上需要做2个动作，一个是打新的镜像，然后就是通知集群更新镜像即可。</p>
+
+<p>要添加Node也很方便，通过后台直接添加节点即可，会自动装好Node需要的环境，Node下线做个节点排水设置不调度就自动在其他Node上创建了。</p>
+
+<p>总之，阿里云的ACK容器提供了完整的解决方案，也有比较完善的文档：<a href="https://help.aliyun.com/document_detail/86987.html">https://help.aliyun.com/document_detail/86987.html</a></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-01.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-01.html">2021-01-22 20:46</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/hbase.html">Hbase配置及数据迁移</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/go-testing.html">Golang ( 7 ) - 单元测试</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes项目实践 - ACK集群.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes项目实践 - ACK集群.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

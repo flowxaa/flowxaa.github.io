@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>phpize添加PHPopenssl、mysql扩展</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">phpize添加PHPopenssl、mysql扩展</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="phpize">phpize</h1>
+
+<p>phpize 命令是用来准备 PHP 扩展库的编译环境的。下面例子中，扩展库的源程序位于 extname 目录中：</p>
+
+<pre><code>$ cd extname
+$ phpize
+$ ./configure
+$ make
+# make install
+</code></pre>
+
+<p>成功的安装将创建 extname.so 并放置于 PHP 的扩展库目录中。需要调整 php.ini，加入 extension=extname.so 这一行之后才能使用此扩展库。</p>
+
+<p>如果系统中没有 phpize 命令并且使用了预编译的包（例如 RPM），那要安装 PHP 包相应的开发版本，此版本通常包含了 phpize 命令以及相应的用于编译 PHP 及其扩展库的头文件。</p>
+
+<p>使用 phpize &ndash;help 命令可以显示此命令用法。</p>
+
+<p>原文：<a href="http://php.net/manual/zh/install.pecl.phpize.php">http://php.net/manual/zh/install.pecl.phpize.php</a></p>
+
+<h1 id="添加openssl扩展">添加openssl扩展</h1>
+
+<pre><code># cd /data/pkg/php-5.5.15/ext/openssl
+# /usr/local/webserver/php/bin/phpize
+Cannot find config.m4. 
+Make sure that you run '/usr/local/webserver/php/bin/phpize' in the top level source directory of the module
+ 
+# mv config0.m4 config.m4
+ 
+# ./configure --with-openssl --with-php-config=/usr/local/webserver/php/bin/php-config
+# make &amp;&amp; make install
+</code></pre>
+
+<p>编译完成后将生成的openssl.so添加到php.ini中，并重启php-fpm</p>
+
+<pre><code># vi /usr/local/webserver/php/lib/php.ini
+ 
+# ps aux | grep php
+root     19714  0.0  0.5  21912  2652 ?        Ss   09:20   0:00 php-fpm: master process (/usr/local/webserver/php/etc/php-fpm.conf)
+nobody   19715  0.0  0.8  21912  4144 ?        S    09:20   0:00 php-fpm: pool www                    
+nobody   19716  0.0  0.8  22232  4308 ?        S    09:20   0:00 php-fpm: pool www                    
+root     22464  0.0  0.1   4028   676 pts/0    R+   09:37   0:00 grep php
+# kill -USR2 19714
+</code></pre>
+
+<p>重启完成后即可调用上篇rsa中的create方法生成公钥、私钥对。</p>
+
+<pre><code>print_r(RsaUtil::create());
+</code></pre>
+
+<h1 id="添加mysql扩展">添加mysql扩展</h1>
+
+<pre><code># cd /data/pkg/php-5.5.15/ext/mysql
+# /usr/local/webserver/php/bin/phpize 
+Configuring for:
+PHP Api Version:         20121113
+Zend Module Api No:      20121212
+Zend Extension Api No:   220121212
+ 
+# ./configure --with-php-config=/usr/local/webserver/php/bin/php-config --with-mysql=/usr/local/webserver/mysql/
+# make &amp;&amp; make install
+Build complete.
+Don't forget to run 'make test'.
+ 
+Installing shared extensions:     /usr/local/webserver/php/lib/php/extensions/no-debug-non-zts-20121212/
+ 
+# vi /usr/local/webserver/php/lib/php.ini
+</code></pre>
+
+<p>mysql.so会自动添加extension_dir所指目录中，修改php.ini添加 extension=mysql.so 重启php</p>
+
+<pre><code># ps aux | grep php
+root      1422  0.0  0.4  22020  2404 ?        Ss   11:28   0:00 php-fpm: master process (/usr/local/webserver/php/etc/php-fpm.conf)
+nobody    1423  0.0  0.4  22020  2144 ?        S    11:28   0:00 php-fpm: pool www                    
+nobody    1424  0.0  0.4  22020  2144 ?        S    11:28   0:00 php-fpm: pool www                    
+root      4767  0.0  0.1   4028   680 pts/0    R+   11:39   0:00 grep php
+# kill -USR2 1422
+</code></pre>
+
+<p>查看PHPINFO是否已添加成功。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2014-08.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2014-08.html">2014-08-14 19:14</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/php.html">PHP</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/linux.html">Linux</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/rsa-usage.html">RSA常见用法整理</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/linux-nginx-install.html">Linux下安装 Nginx</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\linux\phpize添加PHPopenssl、mysql扩展.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\linux\phpize添加PHPopenssl、mysql扩展.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

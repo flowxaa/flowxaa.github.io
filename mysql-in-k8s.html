@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes容器化 - Mysql</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes容器化 - Mysql</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>可以先通过Docker来运行Mysql镜像，正常情况下执行下列命令就会在容器里启动一个Mysql了。</p>
+
+<pre><code>$ docker pull mysql:5.6
+$ docker run --name mysql \
+-e MYSQL_ROOT_PASSWORD=123456 \
+-d mysql:5.6
+</code></pre>
+
+<p>进入容器后可以看到一些配置目录，</p>
+
+<pre><code>$ docker ps
+CONTAINER ID   IMAGE       COMMAND                  CREATED      STATUS          PORTS                 NAMES
+e6944558d3f9   mysql:5.6   &quot;docker-entrypoint.s…&quot;   5 days ago   Up 28 seconds   3306/tcp, 33060/tcp   mysql
+
+$ docker exec -it e6944558d3f9 /bin/bash
+root@e6944558d3f9:/# cat /etc/mysql/mysql.conf.d/mysqld.cnf  | grep -v ^# | grep -v ^$
+[mysqld]
+pid-file	= /var/run/mysqld/mysqld.pid
+socket		= /var/run/mysqld/mysqld.sock
+datadir		= /var/lib/mysql
+symbolic-links=0
+
+
+root@e6944558d3f9:/# mysql -uroot -p
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 6386
+Server version: 5.6.51-log MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql&gt; show variables like '%datadir%';
++---------------+-----------------+
+| Variable_name | Value           |
++---------------+-----------------+
+| datadir       | /var/lib/mysql/ |
++---------------+-----------------+
+1 row in set (0.00 sec)
+</code></pre>
+
+<p>同时在DockerHub上也可以有一些常量可以设置：</p>
+
+<p><img src="../../static/uploads/WX20210630-142416.png" alt="" /></p>
+
+<p>接下来就是怎么将Mysql配置在Kubernetes中。</p>
+
+<p><strong>第一步，创建pv/pvc</strong>，这里使用的是阿里云的云盘，减少延迟。和NAS不同，一个云盘只能同时被一个Pod挂载，且只能运行在与云盘同一个可用区的ECS节点才能挂载。这里以静态的方式创建pv/pvc。</p>
+
+<pre><code>apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-test-pv
+  labels:
+    project: mysql-test-pv
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: diskplugin.csi.alibabacloud.com
+    volumeHandle: yourdiskid
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.diskplugin.csi.alibabacloud.com/zone
+          operator: In
+          values:
+          - &quot;cn-hangzhou-h&quot;
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mysql-test-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Gi
+  selector:
+    matchLabels:
+      project: mysql-test-pv
+
+</code></pre>
+
+<p><strong>第二步，配置文件</strong>，将配置文件以ConfigMap的方式挂到容器里，根据要求调整数据库配置文件。忽略<code>lost+found</code>是因为挂载云盘时会自动创建这个目录。</p>
+
+<pre><code>apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-test-config
+  namespace: default
+data:
+  my.cnf: |
+    [mysqld]
+    port = 3306
+    bind-address = 0.0.0.0
+    datadir = /var/lib/mysql
+    socket = /var/run/mysqld/mysqld.sock
+
+    max_connections = 128
+    max_allowed_packet = 10M
+    character-set-server = utf8 
+    collation-server = utf8_general_ci
+
+    symbolic-links = 0
+    skip-name-resolve
+    explicit_defaults_for_timestamp = true
+    sql_mode = NO_ENGINE_SUBSTITUTION
+    ignore-db-dir = lost+found
+
+    init_connect = 'SET NAMES utf8;'
+    key_buffer_size = 64M
+    innodb_file_per_table = 1
+    innodb_lock_wait_timeout = 30
+    innodb_buffer_pool_size = 512M
+
+    slow_query_log = on
+    long_query_time = 10
+    slow_query_log_file = /var/log/mysql/mysql-slow.log
+    log-error = /var/log/mysql/error.log
+    binlog_format = mixed
+    log-bin = mysql-bin
+    expire_logs_days = 3
+
+    [client]
+    default-character-set = utf8
+
+    [mysql]
+    default-character-set = utf8
+
+</code></pre>
+
+<p><strong>第三步：编写StatefulSet</strong>，映射了数据目录和配置文件。</p>
+
+<pre><code>apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-test
+  namespace: default
+  labels:
+    project: mysql-test
+spec:
+  serviceName: mysql-test
+  replicas: 1
+  selector:
+    matchLabels:
+      project: mysql-test
+  template:
+    metadata:
+      labels:
+        project: mysql-test
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: mysql
+        image: mysql:5.6
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: 123456
+        volumeMounts:
+        - name: mysql-test-pv
+          mountPath: /var/lib/mysql
+        - name: mysql-test-config
+          mountPath: /etc/mysql/my.cnf
+          subPath: my.cnf
+      volumes:
+      - name: mysql-test-config
+        configMap:
+          name: mysql-test-config
+      - name: mysql-test-pv
+        persistentVolumeClaim:
+          claimName: mysql-test-pvc
+
+</code></pre>
+
+<p><strong>第四步：编写Service</strong></p>
+
+<pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-test
+  namespace: default
+  labels:
+    project: mysql-test
+spec:
+  selector:
+    project: mysql-test
+  ports:
+  - name: mysql
+    port: 3306
+    protocol: TCP
+  clusterIP: None
+</code></pre>
+
+<p>运行上面编写的Yaml文件即可，正常一个单节点的Mysql就应该创建好了。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-05.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-05.html">2021-05-19 06:30</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/mysql.html">Mysql</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/redis-in-k8s.html">Kubernetes容器化 - Redis</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/mongo-in-k8s.html">Kubernetes容器化 - MongoDB</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes容器化 - Mysql.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes容器化 - Mysql.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

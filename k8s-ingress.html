@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes基础 ( 7 ) - Ingress</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes基础 ( 7 ) - Ingress</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a></li>
+<li><a href="#二-ingress-nginx">二、ingress-nginx</a>
+<ul>
+<li><a href="#2-1-安装">2.1 安装</a></li>
+<li><a href="#2-2-示例">2.2 示例</a></li>
+<li><a href="#2-3-配置ssl">2.3 配置SSL</a></li>
+<li><a href="#2-4-会话保持">2.4 会话保持</a></li>
+<li><a href="#2-5-多站点配置">2.5 多站点配置</a></li>
+</ul></li>
+<li><a href="#三-小结">三、小结</a></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<p>在前一章中，我们可以通过Service中的NodePort、LoadBalancer的方式来暴露服务的端口，但这也意味着我们需要管理NodePort的端口映射关系。</p>
+
+<p>Ingress可以根据hostname和path将流量转发到不同的Service上。使用Ingress后的流程图如下，相当于在Service上又重新封装了一层，可以根据访问规则，将流量转到不同的Service上。</p>
+
+<p><img src="../../static/uploads/k8s-ingress.png" alt="" /></p>
+
+<p><strong>Ingress与Ingress-controller</strong></p>
+
+<p>Ingress对象：k8s中的资源对象，可以通过yaml配置，作用是定义到service的转发规则。</p>
+
+<p>Ingress-controller：实现反向代理及负载均衡的控制器，解析Ingress规则，根据规则进行转发。</p>
+
+<p>常见的ingress-controller有：ingress-nginx、traefik，这里使用ingres-nginx</p>
+
+<h1 id="二-ingress-nginx">二、ingress-nginx</h1>
+
+<h2 id="2-1-安装">2.1 安装</h2>
+
+<p>通过官方仓库说明文档 <a href="#refer"><sup>[1]</sup></a>，我的环境是<code>Docker for Mac</code>，应该是执行下面语句。</p>
+
+<pre><code>$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.35.0/deploy/static/provider/cloud/deploy.yaml
+</code></pre>
+
+<p>但需要注意的是文件中这个镜像要翻墙，否则拉取镜像会失败。</p>
+
+<pre><code>image: k8s.gcr.io/ingress-nginx/controller:v0.35.0@sha256:fc4979d8b8443a831c9789b5155cded454cb7de737a8b727bc2ba0106d2eae8b
+</code></pre>
+
+<p>我这里的处理方法是借助阿里云的仓库，通过构建<code>Github</code>上的<code>Dockerfile</code>。然后直接用阿里云的仓库替换掉后再<code>apply</code>。</p>
+
+<h2 id="2-2-示例">2.2 示例</h2>
+
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-go-demo-deploy
+  labels:
+    project: k8s-go-demo-deploy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-go-demo
+  template:
+    metadata:
+      labels:
+        app: k8s-go-demo
+    spec:
+      containers:
+      - name: k8s-go-demo
+        image: pengbotao/k8s-go-demo:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 38001
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-go-demo-svc
+  labels:
+    project: k8s-go-demo-svc
+spec:
+  selector:
+    app: k8s-go-demo
+  ports:
+  - port: 38000
+    targetPort: 38001
+    protocol: TCP
+
+--- 
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: k8s-go-demo-ingress
+spec:
+  rules:
+  - host: demo.k8s.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: k8s-go-demo-svc
+          servicePort: 38000
+</code></pre>
+
+<p>前面的<code>Deployment</code>和<code>Service</code>用的比较多了，主要看<code>ingress</code>，这里根据<code>serviceName</code>和<code>servicePort</code>进行关联。应用之后可以看到：</p>
+
+<pre><code>$ kubectl get ingress
+NAME                  HOSTS          ADDRESS     PORTS   AGE
+k8s-go-demo-ingress   demo.k8s.com   localhost   80      47m
+</code></pre>
+
+<p>配置<code>Hosts</code>后本地浏览器访问<code>http://demo.k8s.com/</code>可以看到如下效果。</p>
+
+<pre><code>{
+    &quot;ClientIP&quot;: &quot;192.168.65.3&quot;,
+    &quot;Host&quot;: &quot;k8s-go-demo-deploy-f5fb59494-tgcq4&quot;,
+    &quot;ServerIP&quot;: &quot;10.1.2.115&quot;,
+    &quot;Time&quot;: &quot;2020-09-21 10:00:41&quot;,
+    &quot;Version&quot;: &quot;v1&quot;
+}
+</code></pre>
+
+<blockquote>
+<p>默认使用的80端口，如果本地有其他程序占用80端口可能无法访问。</p>
+</blockquote>
+
+<p>可以进<code>ingress-nginx</code>容器看到，相当于通过<code>Nginx</code>把请求转给后端<code>Service</code>。</p>
+
+<pre><code>$ kubectl get pod -n ingress-nginx
+NAME                                       READY   STATUS    RESTARTS   AGE
+ingress-nginx-controller-5449bc97c-k5g87   1/1     Running   0          8m16s
+ingress-nginx-controller-5449bc97c-lgj5c   1/1     Running   0          4h2m
+ingress-nginx-controller-5449bc97c-wjxm7   1/1     Running   0          8m16s
+
+$ kubectl exec -it ingress-nginx-controller-5449bc97c-k5g87 -n ingress-nginx /bin/bash
+
+$ cat nginx.conf
+
+server {
+    server_name demo.k8s.com ;
+
+    listen 80  ;
+    listen 443  ssl http2 ;
+
+    set $proxy_upstream_name &quot;-&quot;;
+
+    ssl_certificate_by_lua_block {
+            certificate.call()
+    }
+
+    location / {
+
+        set $namespace      &quot;default&quot;;
+        set $ingress_name   &quot;k8s-go-demo-ingress&quot;;
+        set $service_name   &quot;k8s-go-demo-svc&quot;;
+        set $service_port   &quot;38000&quot;;
+        set $location_path  &quot;/&quot;;
+
+</code></pre>
+
+<h2 id="2-3-配置ssl">2.3 配置SSL</h2>
+
+<p>也可以配置HTTPS访问，首先创建secret保存证书：</p>
+
+<pre><code>$ kubectl create secret tls demo-k8s-com --cert=demo.k8s.com.pem --key=demo.k8s.com.key
+</code></pre>
+
+<p>然后配置ingress使用配置的证书，在注解中设置了ssl-redirect为true会自动跳转到https：</p>
+
+<pre><code>apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: demo
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+spec:
+  tls:
+  - hosts:
+    - demo.k8s.com
+    secretName: demo-k8s-com
+  rules:
+  - host: demo.k8s.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: demo
+          servicePort: 80
+</code></pre>
+
+<h2 id="2-4-会话保持">2.4 会话保持</h2>
+
+<p>默认情况下请求会随机转给后端的pod，可以在注解中增加以下配置达到保持会话的目的。</p>
+
+<pre><code>apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: demo
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: &quot;cookie&quot;
+    nginx.ingress.kubernetes.io/affinity-mode: &quot;persistent&quot;
+    nginx.ingress.kubernetes.io/session-cookie-name: &quot;route&quot;
+spec:
+  rules:
+  - host: demo.k8s.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: demo
+          servicePort: 80
+</code></pre>
+
+<blockquote>
+<p>mode有balanced和persistent，一个是扩容缩时自动均衡，一个是永久固定；另外会在客户端增加一个Cookie，默认名称是INGRESSCOOKIE，上面指定为route</p>
+</blockquote>
+
+<h2 id="2-5-多站点配置">2.5 多站点配置</h2>
+
+<p>也支持同时配置多个站点</p>
+
+<pre><code>apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: demo
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+spec:
+  tls:
+  - hosts:
+    - demo.k8s.com
+    - test.k8s.com
+    - alpha.k8s.com
+    secretName: demo-k8s-com
+  rules:
+  - host: demo.k8s.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: demo
+          servicePort: 80
+  - host: test.k8s.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: test
+          servicePort: 80
+  - host: alpha.k8s.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: alpha
+          servicePort: 80
+</code></pre>
+
+<h1 id="三-小结">三、小结</h1>
+
+<p>到这里，访问流程大致如下：</p>
+
+<p><img src="../../static/uploads/k8s-scaling-out.png" alt="" /></p>
+
+<hr />
+
+<div id="refer"></div>
+
+<ul>
+<li>[1] <a href="https://github.com/kubernetes/ingress-nginx/blob/master/docs/deploy/index.md">Installation Guide</a></li>
+<li>[2] <a href="https://segmentfault.com/a/1190000019908991">k8s ingress原理及ingress-nginx部署测试</a></li>
+<li>[3] <a href="https://www.cnblogs.com/panwenbin-logs/p/9915927.html">kubernetes学习笔记之七： Ingress-nginx 部署使用</a></li>
+<li>[4] <a href="https://kubernetes.github.io/ingress-nginx/examples/affinity/cookie/">ingress nginx affinity</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-10.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-10.html">2020-10-24 21:21</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/k8s-service.html">Kubernetes基础 ( 6 ) - Service</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/k8s-scheduler.html">Kubernetes基础 ( 8 ) - 调度器</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 7 ) - Ingress.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 7 ) - Ingress.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

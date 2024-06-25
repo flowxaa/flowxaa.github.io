@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>C++学习笔记 – 函数</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">C++学习笔记 – 函数</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="函数">函数</h1>
+
+<p>创建自己的函数必须自行处理这3方面 - 定义、提供原型和调用。</p>
+
+<p>库函数是已经定义和编译好的函数，同时可以使用标准头文件提供其原型，因此只需要正确的调用这种函数即可。</p>
+
+<p>C++对于返回值的类型有一定的限制：不能是数组，但可以是其他任何类型 —— 整数、浮点数、指针，甚至可以是结构和对象！（虽不能直接返回数组，但可以将数组作为结构或对象组成部分返回。）</p>
+
+<p>函数原型不要求提供变量名，有类型列表就足够了。C++中函数原型是必不可少的。</p>
+
+<h1 id="函数和数组">函数和数组</h1>
+
+<p>C++将数组名解释为其第一个元素的地址:</p>
+
+<pre><code>cookies == &amp; cookies[0]
+cookies[i] == *(cookies + i)
+</code></pre>
+
+<p>该规则有一些例外：</p>
+
+<ul>
+<li>1、数组声明使用数组名来标记存储位置</li>
+<li>2、对数组使用sizeof得到整个数组的长度</li>
+<li>3、将地址符&amp;用户数组名时，将返回整个数组的地址，</li>
+</ul>
+
+<p><strong>数组的函数原型</strong></p>
+
+<pre><code>int sum_arr(int arr[], int n)
+int sum_arr(int *arr, int n)
+</code></pre>
+
+<p>传递常规变量时，函数将使用该变量的拷贝；但传递数组时，函数将使用原来的数组。为了防止函数无意中修改数组的内容，可在声明形参时使用关键字const</p>
+
+<pre><code>void show array(const double ar[], int n);
+</code></pre>
+
+<h1 id="指针和const">指针和const</h1>
+
+<p><strong>1、让指针指向一个常量对象，可以防止指针来修改指向的值。</strong></p>
+
+<pre><code>int age = 39;
+const int * pt = &amp;age;
+</code></pre>
+
+<p>pt的声明并不意味着它指向的值实际上就是一个常量，而只是意味着对pt而言，这个值是常量。例如，pt指向age，而age不是const。可以直接通过age变量来修改age的值，但不能使用pt指针来修改它。
+const只能防止修改*pt指向的值，而不能防止修改pt的值。也就是说可以将一个新地址赋值给pt。</p>
+
+<p>可以将常规变量赋值给指向const的指针，因此还有两种可能：将const变量的地址赋值给指向const的指针、将const的地址赋值给常规指针。</p>
+
+<pre><code>const float g_earth = 9.80;
+const float *pe = &amp;g_earth; //valid
+ 
+const float g_moon = 1.63;
+float *pm = &amp;g_moon; //invalid
+</code></pre>
+
+<p><strong>2、将指针本身声明为常量，这样可以防止改变指针指向的位置。</strong></p>
+
+<pre><code>int sloth = 3;
+const int * ps = &amp;sloth;      // a pointer to const int
+int * const finger = &amp;sloth;  //a const pointer to int
+</code></pre>
+
+<p>关键字const的位置不同，使得finger只能指向sloth，但允许使用finger来修改sloth的值。中间的声明不允许使用ps来修改sloth的值，但允许将ps指向另一个位置。简而言之，finger和*ps都是const，而*finger和ps不是。</p>
+
+<p><strong>3、指针和值均为常量</strong></p>
+
+<pre><code>double trouble = 2.0E30;
+const double * const stick = &amp;trouble;
+</code></pre>
+
+<p>此时，stick只能指向trouble，并且不能用stick来修改trouble的值。</p>
+
+<h1 id="函数和c-风格字符串">函数和C-风格字符串</h1>
+
+<p>C-风格字符串由一系列字符组成，以空字符结尾。数组相关知识也适用于C-风格字符串。例如，将字符串作为参数时意味着传递的是地址，也可以使用const来禁止对字符串进行修改。
+将字符串作为参数传递给函数，有3中表示字符串的方式：</p>
+
+<p><strong>char数组；</strong></p>
+
+<ul>
+<li>用引号括起的字符串常量（也成为字符串字面值）；</li>
+<li>被设置为字符串的地址的char指针</li>
+</ul>
+
+<pre><code>char ghost[15] = &quot;galloping&quot;;
+char * str = &quot;galumphing&quot;;
+</code></pre>
+
+<p>将字符串作为参数来传递，实际上传递的是字符串第一个字符的地址。意味着函数原型应声明为 char *类型。C-风格字符串与常规char数组之间的一个重要区别是，字符串有内置的结束字符，这意味着不必将字符串长度作为参数传递给函数。</p>
+
+<h1 id="函数和string对象">函数和string对象</h1>
+
+<p>虽然C-风格字符串和string对象的用途几乎相同，但与数组相比，string对象与结构更相似。例如，可以将一个结构赋给另一个结构，也可以将一个对象赋值给另一个对象。可以将结构作为完整的实体传递给函数，也可以将对象作为完整的实体进行传递。如果需要多个字符串，可以声明一个string对象数组，而不是二维char数组。</p>
+
+<h1 id="函数和结构体">函数和结构体</h1>
+
+<p>与数组名就是数组第一个元素的地址不同的是，结构名只是结构的名称，要获取结构的地址，必须使用地址运算符&amp;。</p>
+
+<p><strong>传递结构的地址</strong></p>
+
+<ul>
+<li>调用函数时，将结构的地址（&amp;st）而不是结构本身（st）传给给它;</li>
+<li>将形参声明为指向st的指针，即st *类型。如果不允许修改结构，可以使用const修饰符;</li>
+<li>由于形参是指针而不是结构，因此应用间接成员运算符（-&gt;），而不是成员运算符（.）。</li>
+</ul>
+
+<h1 id="函数指针">函数指针</h1>
+
+<p>与数据项相似，函数也有地址。函数的地址是存储其机器语言代码的内存的开始地址。可以编写将另一个函数的地址作为参数的函数，这样子第一个函数将能够找到第二个函数，并运行它。函数名即为函数的地址。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2015-03.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2015-03.html">2015-03-29 23:25</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/c++.html">C++</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/cpp-primer-plus-type.html">C++学习笔记 – 数据类型</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/cpp-primer-plus-function-2.html">C++学习笔记 – 函数探幽</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\cpp\C++学习笔记 – 函数.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\cpp\C++学习笔记 – 函数.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

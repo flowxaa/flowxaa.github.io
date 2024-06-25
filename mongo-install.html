@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>MongoDB环境搭建</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">MongoDB环境搭建</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-安装">一、安装</h1>
+
+<p>通过官方下载社区版本（MongoDB Community Server），选择对应平台下载后解压即可看到可执行程序。</p>
+
+<pre><code>$ ls ~/data/mongodb-macos-x86_64-4.4.3/
+LICENSE-Community.txt MPL-2                 README                THIRD-PARTY-NOTICES   bin
+
+$ ll ~/data/mongodb-macos-x86_64-4.4.3/bin/
+total 320808
+-rwxr-xr-x@ 1 peng  staff      7683 12 22 07:42 install_compass
+-rwxr-xr-x  1 peng  staff  43147504 12 22 07:39 mongo
+-rwxr-xr-x  1 peng  staff  68692572 12 22 07:40 mongod
+-rwxr-xr-x  1 peng  staff  52399600 12 22 07:32 mongos
+</code></pre>
+
+<p>方便访问以设置bin目录到环境变量，创建配置文件<code>mongod.conf</code>：</p>
+
+<pre><code>systemLog:
+    destination: file
+    path: &quot;/Users/peng/data/mongodb-macos-x86_64-4.4.3/logs/mongodb.log&quot;
+    logAppend: true
+storage:
+    dbPath: &quot;/Users/peng/data/mongodb-macos-x86_64-4.4.3/data/&quot;
+    journal:
+        enabled: true
+net:
+    port: 27017
+    bindIp: 127.0.0.1
+processManagement:
+    fork: true
+    pidFilePath: &quot;/Users/peng/data/mongodb-macos-x86_64-4.4.3/logs/mongod.pid&quot;
+
+</code></pre>
+
+<p>启动服务</p>
+
+<pre><code>$ mongod -f ~/data/mongodb-macos-x86_64-4.4.3/mongod.conf
+about to fork child process, waiting until server is ready for connections.
+forked process: 49268
+child process started successfully, parent exiting
+</code></pre>
+
+<p>停止服务</p>
+
+<pre><code>$ mongo
+MongoDB shell version v4.4.3
+connecting to: mongodb://127.0.0.1:27017/?compressors=disabled&amp;gssapiServiceName=mongodb
+Implicit session: session { &quot;id&quot; : UUID(&quot;ef69ef5a-9a83-45f4-a1ca-b63717183535&quot;) }
+MongoDB server version: 4.4.3
+switched to db admin
+&gt; db
+admin
+&gt; db.shutdownServer()
+server should be down...
+</code></pre>
+
+<p>通过官方安装MongoDB GUI管理工具：MongoDB Compass，效果图如下：</p>
+
+<p><img src="../../static/uploads/mongodb-compass.png" alt="" /></p>
+
+<p><strong>MongoDB与Mysql结构对比</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>MYSQL</th>
+<th>MongoDB</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>库 - database</td>
+<td>库 - database</td>
+<td></td>
+</tr>
+
+<tr>
+<td>表 - table</td>
+<td>集合 - collection</td>
+<td>表示一组文档</td>
+</tr>
+
+<tr>
+<td>行 - row</td>
+<td>文档 - document</td>
+<td>基本单元，类似关系型数据库中的行</td>
+</tr>
+</tbody>
+</table>
+
+<h1 id="二-基本用法">二、基本用法</h1>
+
+<h2 id="2-1-登录">2.1 登录</h2>
+
+<pre><code>$ mongo --host 127.0.0.1 --port 27017
+$ use demo
+
+# 配置文件有开启授权认证时需要先验证
+$ db.auth(&quot;demo&quot;, &quot;passwd&quot;)
+$ show collections
+</code></pre>
+
+<p>也可以直接登录时指定密码，前面的demo是demo库</p>
+
+<pre><code>&gt; mongo demo -udemo -p
+MongoDB shell version v3.4.24
+Enter password:
+connecting to: mongodb://127.0.0.1:27017/demo
+MongoDB server version: 3.4.24
+</code></pre>
+
+<h2 id="2-2-基本查询">2.2 基本查询</h2>
+
+<pre><code># 显示数据库列表
+&gt; show dbs
+&gt; show databases
+
+# 显示库中的集合
+&gt; show tables
+&gt; show collections
+
+# 切换数据库
+&gt; use demo
+
+&gt; db.articles.find().pretty()
+{
+	&quot;_id&quot; : ObjectId(&quot;6006394a1e1382e154503c71&quot;),
+	&quot;title&quot; : &quot;Hbase配置及数据迁移&quot;,
+	&quot;href&quot; : &quot;https://itopic.org/hbase.html&quot;
+}
+
+&gt; db.articles.find({top:1}).pretty()
+{
+	&quot;_id&quot; : ObjectId(&quot;6006396c1e1382e154503c72&quot;),
+	&quot;title&quot; : &quot;Apache Airflow数据库迁移&quot;,
+	&quot;href&quot; : &quot;https://itopic.org/airflow-data-migration.html&quot;,
+	&quot;top&quot; : 1
+}
+
+&gt; db.articles.find({'author.name':'peng'}).pretty()
+{
+	&quot;_id&quot; : ObjectId(&quot;60063a931e1382e154503c74&quot;),
+	&quot;title&quot; : &quot;Python入门知识点整理&quot;,
+	&quot;href&quot; : &quot;https://itopic.org/python.html&quot;,
+	&quot;top&quot; : 1,
+	&quot;author&quot; : {
+		&quot;name&quot; : &quot;peng&quot;,
+		&quot;age&quot; : 18
+	}
+}
+
+&gt; db.articles.count()
+4
+
+# 按创建时间倒叙取3条
+&gt; db.articles.find().limit(3).sort({created_ts: -1})
+</code></pre>
+
+<h2 id="2-3-插入与更新">2.3 插入与更新</h2>
+
+<p><strong>数据插入</strong></p>
+
+<pre><code>&gt; db.articles.insert({title: &quot;Shell脚本入门&quot;, href: &quot;https://itopic.org/shell-start.html&quot;})
+WriteResult({ &quot;nInserted&quot; : 1 })
+</code></pre>
+
+<p><strong>数据更新</strong></p>
+
+<pre><code>&gt; db.articles.update({title: &quot;Shell脚本入门&quot;}, {title: &quot;Shell脚本入门&quot;, href: &quot;&quot;, top:0})
+WriteResult({ &quot;nMatched&quot; : 1, &quot;nUpserted&quot; : 0, &quot;nModified&quot; : 1 })
+</code></pre>
+
+<h2 id="2-4-数据删除">2.4 数据删除</h2>
+
+<pre><code>&gt; db.articles.remove({title: &quot;Shell脚本入门&quot;})
+WriteResult({ &quot;nRemoved&quot; : 1 })
+</code></pre>
+
+<h1 id="三-用户管理">三、用户管理</h1>
+
+<h2 id="3-1-创建用户">3.1 创建用户</h2>
+
+<p>创建admin用户，创建用户时指定角色为root。内置了一些角色：</p>
+
+<table>
+<thead>
+<tr>
+<th><strong>角色</strong></th>
+<th><strong>介绍</strong></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>read</td>
+<td>提供读取所有非系统的集合（数据库）</td>
+</tr>
+
+<tr>
+<td>readWrite</td>
+<td>提供读写所有非系统的集合（数据库）和读取所有角色的所有权限</td>
+</tr>
+
+<tr>
+<td>dbAdmin</td>
+<td>提供执行管理任务的功能，例如与架构相关的任务，索引编制，收集统计信息。此角色不授予用户和角色管理权限。</td>
+</tr>
+
+<tr>
+<td>dbOwner</td>
+<td>提供对数据库执行任何管理操作的功能。此角色组合了readWrite，dbAdmin和userAdmin角色授予的权限。</td>
+</tr>
+
+<tr>
+<td>userAdmin</td>
+<td>提供在当前数据库上创建和修改角色和用户的功能。由于userAdmin角色允许用户向任何用户（包括他们自己）授予任何权限，因此该角色还间接提供对数据库的超级用户访问权限，或者，如果作用于管理数据库，则提供对群集的访问权限。</td>
+</tr>
+
+<tr>
+<td>clusterAdmin</td>
+<td>提供最佳的集群管理访问。此角色组合了clusterManager，clusterMonitor和hostManager角色授予的权限。此外，该角色还提供了dropDatabase操作。</td>
+</tr>
+
+<tr>
+<td>readAnyDatabase</td>
+<td>仅在admin 数据库中使用，提供所有数据库的读权限。</td>
+</tr>
+
+<tr>
+<td>readWriteAnyDatabase</td>
+<td>尽在admin 数据库中使用，提供所有数据库的读写权限</td>
+</tr>
+
+<tr>
+<td>userAdminAnyDatabase</td>
+<td>尽在admin 数据库中使用，提供与userAdmin相同的用户管理操作访问权限，允许用户向任何用户（包括他们自己）授予任何权限，因此该角色还间接提供超级用户访问权限。</td>
+</tr>
+
+<tr>
+<td>dbAdminAnyDatabase</td>
+<td>仅在admin 数据库中使用，提供与dbAdmin相同的数据库管理操作访问权限，该角色还在整个群集上提供listDatabases操作。</td>
+</tr>
+
+<tr>
+<td>root</td>
+<td>尽在admin 数据库中使用，提供超级权限</td>
+</tr>
+</tbody>
+</table>
+
+<pre><code>&gt; use.admin  
+&gt; db.createUser({
+  user: 'admin',
+  pwd: '123456',
+  roles:[{
+    role: 'root',
+    db: 'admin'
+  }]
+})
+
+Successfully added user: {
+	&quot;user&quot; : &quot;admin&quot;,
+	&quot;roles&quot; : [
+		{
+			&quot;role&quot; : &quot;root&quot;,
+			&quot;db&quot; : &quot;admin&quot;
+		}
+	]
+}
+</code></pre>
+
+<p><strong>查看用户</strong>，需要切换到对应的库下面</p>
+
+<pre><code>&gt; use demo
+switched to db demo
+&gt; show users
+{
+	&quot;_id&quot; : &quot;demo.demo&quot;,
+	&quot;userId&quot; : BinData(4,&quot;dzjECUu2Q4aNATGogyNRTw==&quot;),
+	&quot;user&quot; : &quot;demo&quot;,
+	&quot;db&quot; : &quot;demo&quot;,
+	&quot;roles&quot; : [
+		{
+			&quot;role&quot; : &quot;dbOwner&quot;,
+			&quot;db&quot; : &quot;demo&quot;
+		}
+	]
+}
+&gt; use admin
+&gt; db.system.users.find().pretty()
+</code></pre>
+
+<p><strong>创建用户</strong></p>
+
+<pre><code>&gt; use demo
+&gt; db.createUser({
+  user: 'demo',
+  pwd: '123456',
+  roles:[{
+    role: 'dbOwner',
+    db: 'demo'
+  }]
+})
+</code></pre>
+
+<h2 id="3-2-删除用户">3.2 删除用户</h2>
+
+<pre><code>&gt; use demo
+&gt; db.dropUser('demo')
+</code></pre>
+
+<h2 id="3-3-更新密码">3.3 更新密码</h2>
+
+<pre><code>&gt; db.updateUser('demo', {pwd: '123456'})
+</code></pre>
+
+<h1 id="四-数据库管理">四、数据库管理</h1>
+
+<h2 id="4-1-创建数据库">4.1 创建数据库</h2>
+
+<p><strong>创建数据库</strong>，需要传入一条记录才可以看到对应的数据库。</p>
+
+<pre><code>&gt; use demo
+&gt; db.articles.insert({title: &quot;Shell脚本入门&quot;, href: &quot;https://itopic.org/shell-start.html&quot;})
+</code></pre>
+
+<h2 id="4-2-删除集合">4.2 删除集合</h2>
+
+<pre><code>&gt; show collections
+&gt; db.articles.drop()
+</code></pre>
+
+<h2 id="4-3-删除数据库">4.3 删除数据库</h2>
+
+<pre><code>&gt; use demo
+&gt; db.dropDatabase()
+</code></pre>
+
+<h1 id="五-数据修复">五、数据修复</h1>
+
+<p>同步数据后可能出现<strong>ERROR: child process failed, exited with error number 51</strong></p>
+
+<pre><code>$ rm /data/mongodb-macos-x86_64-4.4.3/data/mongod.lock
+$ /data/mongodb-macos-x86_64-4.4.3/bin/mongod --repair --dbpath=/data/mongodb-macos-x86_64-4.4.3/data
+</code></pre>
+
+<hr />
+
+<ul>
+<li>[1] <a href="https://www.mongodb.com">MongoDB官网</a></li>
+<li>[2] <a href="https://www.kancloud.cn/noahs/linux/1425612">MongoDB数据库系列</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2018-12.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2018-12.html">2018-12-10 06:37</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/mongodb.html">MongoDB</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/elasticsearch.html">全文搜索引擎 - Elasticsearch</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/coordinate.html">地图坐标系</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\MongoDB\MongoDB环境搭建.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\MongoDB\MongoDB环境搭建.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

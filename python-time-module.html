@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python常用库 ( 2 ) - 时间模块</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python常用库 ( 2 ) - 时间模块</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-time模块">一、time模块</h1>
+
+<pre><code>&gt;&gt;&gt; print(time.__doc__)
+
+Functions:
+
+time() -- return current time in seconds since the Epoch as a float
+clock() -- return CPU time since process start as a float
+sleep() -- delay for a number of seconds given as a float
+gmtime() -- convert seconds since Epoch to UTC tuple
+localtime() -- convert seconds since Epoch to local time tuple
+asctime() -- convert time tuple to string
+ctime() -- convert time in seconds to string
+mktime() -- convert local time tuple to seconds since Epoch
+strftime() -- convert time tuple to string according to format specification
+strptime() -- parse string to time tuple according to format specification
+tzset() -- change the local timezone
+</code></pre>
+
+<h2 id="1-1-获取时间戳">1.1 获取时间戳</h2>
+
+<pre><code>&gt;&gt;&gt; time.time()
+1552827527.447389
+&gt;&gt;&gt; int(time.time())
+1552827538
+</code></pre>
+
+<h2 id="1-2-停留x秒">1.2 停留x秒</h2>
+
+<p>支持浮点数。</p>
+
+<pre><code>&gt;&gt;&gt; print time.sleep.__doc__
+sleep(seconds)
+
+Delay execution for a given number of seconds.  The argument may be
+a floating point number for subsecond precision.
+</code></pre>
+
+<h2 id="1-3-time转字符串">1.3 time转字符串</h2>
+
+<pre><code>&gt;&gt;&gt; print time.strftime.__doc__
+strftime(format[, tuple]) -&gt; string
+
+Convert a time tuple to a string according to a format specification.
+See the library reference manual for formatting codes. When the time tuple
+is not present, current time as returned by localtime() is used.
+</code></pre>
+
+<p>输出当前时间：<code>time.strftime(&quot;%Y-%m-%d %H:%M:%S&quot;)</code>; <code>time.strftime(&quot;%Y-%m-%d %H:%M:%S&quot;, time.localtime())</code></p>
+
+<p>输出指定时间：<code>time.strftime(&quot;%Y-%m-%d %H:%M:%S&quot;, time.strptime(&quot;2006-01-02 15:04:05&quot;, &quot;%Y-%m-%d %H:%M:%S&quot;))</code></p>
+
+<h2 id="1-4-字符串转time">1.4 字符串转time</h2>
+
+<pre><code>&gt;&gt;&gt; print time.strptime.__doc__
+strptime(string, format) -&gt; struct_time
+
+Parse a string to a time tuple according to a format specification.
+See the library reference manual for formatting codes (same as strftime()).
+</code></pre>
+
+<h1 id="二-datetime-datetime模块">二、datetime.datetime模块</h1>
+
+<h2 id="2-1-获取当前时间-时间戳">2.1 获取当前时间/时间戳</h2>
+
+<pre><code>&gt;&gt;&gt; from datetime import datetime
+
+# 初始化一个时间
+&gt;&gt;&gt; x = datetime(year=2006, month=1, day=2, hour=15, minute=54, second=5)
+
+# 获取当前时间
+&gt;&gt;&gt; t = datetime.now()
+datetime.datetime(2019, 3, 17, 20, 55, 8, 556405)
+
+# 单项打印
+&gt;&gt;&gt; print(t.year, t.month, t.day, t.hour, t.minute, t.second, t.microsecond)
+
+# 获取时间戳。应该是3.x版本才有
+&gt;&gt;&gt; datetime.now().timestamp()
+1552827338.052106
+
+&gt;&gt;&gt; datetime.today()
+datetime.datetime(2019, 3, 17, 21, 10, 55, 897950)
+</code></pre>
+
+<h2 id="2-2-datetime转字符串">2.2 datetime转字符串</h2>
+
+<pre><code># 将当前时间打印为字符串
+&gt;&gt;&gt; datetime.now().strftime(&quot;%Y-%m-%d %H:%M:%S&quot;)
+'2019-03-17 20:56:48'
+</code></pre>
+
+<h2 id="2-3-字符串转datetime">2.3 字符串转datetime</h2>
+
+<pre><code>&gt;&gt;&gt; s = '2006-01-02 15:04:05'
+&gt;&gt;&gt; print(datetime.strptime(s, &quot;%Y-%m-%d %H:%M:%S&quot;))
+2006-01-02 15:04:05
+</code></pre>
+
+<h2 id="2-4-时间戳转datetime">2.4 时间戳转datetime</h2>
+
+<pre><code>&gt;&gt;&gt; t = time.time()
+&gt;&gt;&gt; print(datetime.fromtimestamp(t))
+2019-03-17 20:58:15.470147
+&gt;&gt;&gt; print(datetime.utcfromtimestamp(t))
+2019-03-17 12:58:15.470147
+</code></pre>
+
+<h2 id="2-5-时间移动">2.5 时间移动</h2>
+
+<p>通过<code>timedelta</code>对象来计算过去或者未来的时间。</p>
+
+<pre><code>from datetime import datetime, timedelta
+
+print(datetime.today() - timedelta(weeks=1,
+                                   days=30,
+                                   hours=1,
+                                   minutes=30,
+                                   seconds=20,
+                                   microseconds=10,
+                                   milliseconds=5))
+</code></pre>
+
+<h2 id="2-6-时间间隔">2.6 时间间隔</h2>
+
+<p>支持两个<code>datetime</code>类型的减法，两个<code>datetime</code>相减得到的是<code>timedelta</code>对象，不支持加法。</p>
+
+<pre><code>from datetime import datetime, timedelta
+
+s1 = '2006-01-02 15:04:05'
+d1 = datetime.strptime(s1, &quot;%Y-%m-%d %H:%M:%S&quot;)
+
+d2 = datetime.now()
+print(d1, d2)
+# (datetime.datetime(2006, 1, 2, 15, 4, 5), datetime.datetime(2019, 3, 17, 21, 25, 53, 648149))
+
+t = d2 - d1
+# 两个datetime相减得到的是`timedelta`类型
+print(type(t))
+# &lt;type 'datetime.timedelta'&gt;
+
+# 可查看天数和秒数
+print(t.days, t.seconds)
+# (4822, 22908)
+</code></pre>
+
+<h1 id="三-常用时间操作">三、常用时间操作</h1>
+
+<pre><code>from datetime import datetime, timedelta
+
+t1 = datetime.now()
+
+# 获取本月第一天
+t2 = datetime(t1.year, t1.month, 1)
+print(t2.strftime(&quot;%Y-%m-%d&quot;))
+
+# 本月最后一天
+t3 = datetime(year=t1.year, month=t1.month+1, day=1) - timedelta(days=1)
+print(t3.strftime(&quot;%Y-%m-%d&quot;))
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-03.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-03.html">2016-03-06 19:16</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/python-cli-parse.html">Python常用库 ( 1 ) - 命令行参数解析</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/python-file.html">Python常用库 ( 3 ) - 文件模块</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 2 ) - 时间模块.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 2 ) - 时间模块.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

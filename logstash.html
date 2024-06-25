@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>日志收集工具 - Logstash</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">日志收集工具 - Logstash</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a>
+<ul>
+<li><a href="#1-1-关于logstash">1.1 关于Logstash</a></li>
+<li><a href="#1-2-操作流程">1.2 操作流程</a></li>
+</ul></li>
+<li><a href="#二-常见示例">二、常见示例</a>
+<ul>
+<li><a href="#2-1-示例-基础">2.1 示例 - 基础</a></li>
+<li><a href="#2-2-示例-解析json">2.2 示例 - 解析JSON</a></li>
+<li><a href="#2-3-示例-nginx日志">2.3 示例 - Nginx日志</a></li>
+</ul></li>
+<li><a href="#三-输入">三、输入</a>
+<ul>
+<li><a href="#3-1-文件">3.1 文件</a></li>
+<li><a href="#3-2-kafka">3.2 Kafka</a></li>
+</ul></li>
+<li><a href="#四-过滤器">四、过滤器</a>
+<ul>
+<li><a href="#4-1-json">4.1 Json</a></li>
+<li><a href="#4-2-grok">4.2 grok</a></li>
+<li><a href="#4-3-mutate">4.3 mutate</a></li>
+</ul></li>
+<li><a href="#五-输出">五、输出</a>
+<ul>
+<li><a href="#5-1-文件">5.1 文件</a></li>
+<li><a href="#5-2-elasticsearch">5.2 Elasticsearch</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<h2 id="1-1-关于logstash">1.1 关于Logstash</h2>
+
+<p><img src="../../static/uploads/logstash-pipeline.png" alt="" /></p>
+
+<blockquote>
+<p>Logstash 是免费且开放的服务器端数据处理管道，能够从多个来源采集数据，转换数据，然后将数据发送到您最喜欢的“存储库”中。</p>
+</blockquote>
+
+<p>从上图中可以看到Logstash的主要作用就是进行数据规整转换。主要模块有：</p>
+
+<ul>
+<li>数据输入：支持不下50种数据接入，常见的如文件、Redis、Kafka等。</li>
+<li>数据过滤：对数据进行结构化处理、过滤等。</li>
+<li>数据输出：将规整之后的数据写到Elasticsearch、文件等。</li>
+</ul>
+
+<h2 id="1-2-操作流程">1.2 操作流程</h2>
+
+<ul>
+<li>安装Logstash：<a href="https://www.elastic.co/cn/downloads/logstash">Download Logstash Free</a></li>
+<li>定义配置文件：通过该文件配置数据源、可以进行数据处理并输出到对应存储中。</li>
+<li>启动收集程序：<code>bin/logstash -f logstash.conf</code></li>
+</ul>
+
+<h1 id="二-常见示例">二、常见示例</h1>
+
+<h2 id="2-1-示例-基础">2.1 示例 - 基础</h2>
+
+<p>创建配置文件: <code>logstash.conf</code>，表示从标准输出接受数据，并输出到标准输出，中间没有做数据过滤。</p>
+
+<pre><code class="language-json">input {
+    stdin { }
+}
+
+filter {}
+
+output {
+    stdout { }
+}
+</code></pre>
+
+<p>执行：`logstash -f logstash.conf，待程序启动后即可在命令行输入并回车，可以看到类似如下输出：</p>
+
+<pre><code class="language-json">Hello World
+
+{
+    &quot;message&quot; =&gt; &quot;Hello World\r&quot;, 
+    &quot;host&quot; =&gt; &quot;peng&quot;,
+    &quot;@timestamp&quot; =&gt; 2021-12-01T22:30:50.599Z,
+    &quot;@version&quot; =&gt; &quot;1&quot;
+}
+</code></pre>
+
+<h2 id="2-2-示例-解析json">2.2 示例 - 解析JSON</h2>
+
+<p>前面例子太简单，假设源数据为JSON格式，则解析JSON数据源只需要增加一条：</p>
+
+<pre><code class="language-json">input {
+    stdin { 
+        codec =&gt; json
+    }
+}
+</code></pre>
+
+<p>重新输入json数据可以看到JSON数据已经被解析过了。</p>
+
+<pre><code class="language-json">{&quot;Name&quot;: &quot;Peng&quot;, &quot;Age&quot;: 18} 
+
+{
+          &quot;host&quot; =&gt; &quot;peng&quot;,
+           &quot;Age&quot; =&gt; 18,
+          &quot;Name&quot; =&gt; &quot;Peng&quot;,
+      &quot;@version&quot; =&gt; &quot;1&quot;,
+    &quot;@timestamp&quot; =&gt; 2021-12-01T22:32:17.666Z
+} 
+</code></pre>
+
+<h2 id="2-3-示例-nginx日志">2.3 示例 - Nginx日志</h2>
+
+<p>来个相对复杂点的，解析Nginx日志，默认日志格式如下：</p>
+
+<pre><code>log_format  main  '$remote_addr - $remote_user [$time_local] &quot;$request&quot; '
+                    '$status $body_bytes_sent &quot;$http_referer&quot; '
+                    '&quot;$http_user_agent&quot; &quot;$http_x_forwarded_for&quot;';
+</code></pre>
+
+<p>为方便测试还是从标准输入获取数据源，只记录GET请求，同时输出到标准输出和文件。</p>
+
+<pre><code>input {
+    stdin { 
+        
+    }
+}
+
+filter {
+    grok {
+        match =&gt; { &quot;message&quot; =&gt; &quot;%{IPORHOST:remote_addr} - %{HTTPDUSER:remote_user} \[%{HTTPDATE:time_local}\] \&quot;(?:%{WORD:method} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\&quot; %{NUMBER:status} (?:%{NUMBER:body_bytes}|-) %{QS:referrer} %{QS:user_agent} %{QS:x_forward_for}&quot; }
+        remove_field =&gt; &quot;message&quot;
+    }
+    if [method] != &quot;GET&quot; {
+        drop{}
+    }
+}
+
+output {
+    stdout { }
+    file {
+        path =&gt; &quot;./demo.log&quot;
+    }
+}
+</code></pre>
+
+<p>测试结果如下：</p>
+
+<pre><code>172.19.0.1 - - [01/Dec/2021:22:35:27 +0000] &quot;GET /test.html HTTP/1.1&quot; 200 12 &quot;-&quot; &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36&quot; &quot;-&quot;
+
+{
+       &quot;time_local&quot; =&gt; &quot;01/Dec/2021:22:35:27 +0000&quot;,
+           &quot;method&quot; =&gt; &quot;GET&quot;,
+    &quot;x_forward_for&quot; =&gt; &quot;\&quot;-\&quot;&quot;,
+       &quot;body_bytes&quot; =&gt; &quot;12&quot;,
+       &quot;user_agent&quot; =&gt; &quot;\&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36\&quot;&quot;,
+         &quot;referrer&quot; =&gt; &quot;\&quot;-\&quot;&quot;,
+      &quot;remote_user&quot; =&gt; &quot;-&quot;,
+             &quot;host&quot; =&gt; &quot;peng&quot;,
+      &quot;remote_addr&quot; =&gt; &quot;172.19.0.1&quot;,
+           &quot;status&quot; =&gt; &quot;200&quot;,
+       &quot;@timestamp&quot; =&gt; 2021-12-02T02:28:30.911Z,
+      &quot;httpversion&quot; =&gt; &quot;1.1&quot;,
+          &quot;request&quot; =&gt; &quot;/test.html&quot;,
+         &quot;@version&quot; =&gt; &quot;1&quot;
+}
+</code></pre>
+
+<p>到这里对Logstash的基本使用应该有个大致的了解：基本流程只有<code>输入-处理-输出</code>。但这里把这个流程玩出花了，可以从多个数据源获取数据，针对不同的数据源做不同的格式处理、过滤，最后也可以输出到多个地方，详细文档可查看：<a href="https://www.elastic.co/guide/en/logstash/current/index.html">Logstash Reference</a></p>
+
+<h1 id="三-输入">三、输入</h1>
+
+<h2 id="3-1-文件">3.1 文件</h2>
+
+<p>通过File Input 插件进行收集，示例：</p>
+
+<pre><code class="language-json">input {
+  file {
+    path =&gt; &quot;/data/logs/nginx.log&quot;
+    start_position =&gt; &quot;beginning&quot;
+  }
+}
+</code></pre>
+
+<h2 id="3-2-kafka">3.2 Kafka</h2>
+
+<p>可以通过启动多个Logstash增加吞吐量，前提条件：</p>
+
+<ul>
+<li>多个Logstash属于同一个group_id，即group_id要相同</li>
+<li>有多个分区，让更多的示例可以消费</li>
+</ul>
+
+<pre><code class="language-json">input {
+    kafka {
+        bootstrap_servers =&gt; &quot;192.168.0.100:9092&quot;
+        group_id =&gt; &quot;http-nginx-log&quot;
+        client_id =&gt; &quot;logstash-nginx-01&quot;
+        auto_offset_reset =&gt; &quot;latest&quot;
+        topics =&gt; [&quot;http-nginx-log&quot;]
+        codec =&gt; json {charset =&gt; &quot;UTF-8&quot;}
+        type =&gt; &quot;nginx&quot;
+    }
+
+    kafka {
+        bootstrap_servers =&gt; &quot;192.168.0.101:9092&quot;
+        group_id =&gt; &quot;http-apache-log&quot;
+        client_id =&gt; &quot;logstash-apache-01&quot;
+        auto_offset_reset =&gt; &quot;latest&quot;
+        topics =&gt; [&quot;http-nginx-log&quot;]
+        codec =&gt; json {charset =&gt; &quot;UTF-8&quot;}
+        type =&gt; &quot;apache&quot;
+    }
+}
+
+</code></pre>
+
+<p>这里增加了一个type参数，用于演示<code>5.1</code>的分开输出，可以去掉。</p>
+
+<h1 id="四-过滤器">四、过滤器</h1>
+
+<h2 id="4-1-json">4.1 Json</h2>
+
+<pre><code class="language-json">filter {
+    json {
+        source =&gt; &quot;message&quot;
+        remove_field =&gt; &quot;message&quot;
+    }
+}
+</code></pre>
+
+<h2 id="4-2-grok">4.2 grok</h2>
+
+<p>grok支持标准的正则，对于不规整的数据格式可以用它来规整。同时，它内置了120多种可以直接用的匹配规则。比如他也定义了HTTP日志格式，用此就不需要写前面那一长串了，当然前提是和他定义的格式得匹配。</p>
+
+<pre><code>filter {
+    grok {
+        match =&gt; { &quot;message&quot; =&gt; &quot;%{HTTPD_COMMONLOG}&quot; }
+        remove_field =&gt; &quot;message&quot;
+    }
+}
+</code></pre>
+
+<p>也有一些grok在线测试匹配的站点，更多匹配规则可以参考：<a href="https://github.com/logstash-plugins/logstash-patterns-core/tree/main/patterns">https://github.com/logstash-plugins/logstash-patterns-core/tree/main/patterns</a></p>
+
+<h2 id="4-3-mutate">4.3 mutate</h2>
+
+<p>它提供了丰富的基础类型数据处理能力。包括类型转换，字符串处理和字段处理等。比如下面示例：按 <code>.</code> 切割，增加字段，重命名。</p>
+
+<pre><code class="language-json">filter {
+    mutate {
+        split =&gt; { &quot;hostname&quot; =&gt; &quot;.&quot; }
+        add_field =&gt; { &quot;shortHostname&quot; =&gt; &quot;%{[hostname][0]}&quot; }
+    }
+
+    mutate {
+        rename =&gt; {&quot;shortHostname&quot; =&gt; &quot;hostname&quot;}
+    }
+}
+</code></pre>
+
+<h1 id="五-输出">五、输出</h1>
+
+<h2 id="5-1-文件">5.1 文件</h2>
+
+<pre><code class="language-json">output{
+    if [type]  == &quot;nginx&quot; {
+        file {
+            path =&gt; &quot;/data/logs/nginx-%{+YYYY-MM-dd}-%{host}.log&quot;
+            gzip =&gt; true
+        }
+    }
+
+    if [type]  == &quot;apache&quot; {
+        file {
+            path =&gt; &quot;/data/logs/apache-%{+YYYY-MM-dd}-%{host}.log&quot;
+            gzip =&gt; true
+        }
+    }
+}
+</code></pre>
+
+<h2 id="5-2-elasticsearch">5.2 Elasticsearch</h2>
+
+<pre><code class="language-json">output {
+　　elasticsearch{
+   　　hosts =&gt; [&quot;192.168.0.100:9200&quot;]
+      index =&gt; &quot;http-log-%{+YYYY-MM-dd}&quot;
+   }
+}
+</code></pre>
+
+<hr />
+
+<ul>
+<li>[1] <a href="https://www.elastic.co/guide/en/logstash/current/input-plugins.html">Input Plugins</a></li>
+<li>[2] <a href="https://www.elastic.co/guide/en/logstash/current/filter-plugins.html">Filter Plugins</a></li>
+<li>[3] <a href="https://www.elastic.co/guide/en/logstash/current/output-plugins.html">Output Plugins</a></li>
+<li>[4] <a href="https://krakensystems.co/blog/2018/logstash-nginx-logs-part-1">Transforming and sending Nginx log data to Elasticsearch using Filebeat and Logstash - Part 1</a></li>
+<li>[5] <a href="https://doc.yonyoucloud.com/doc/logstash-best-practice-cn/index.html">Logstash 最佳实践</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-12.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-12.html">2021-12-01 22:15</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/logstash.html">logstash</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/elk.html">ELK</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/why-should-we-study-hard.html">奥巴马：我们为什么要努力学习？</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/go-pprof.html">Golang性能分析 - PProf</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\elastic\日志收集工具 - Logstash.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\elastic\日志收集工具 - Logstash.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

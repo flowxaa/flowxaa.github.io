@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>运维自动化工具 - Ansible（2）</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">运维自动化工具 - Ansible（2）</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a></li>
+<li><a href="#二-剧本-playbooks">二、剧本 - Playbooks</a>
+<ul>
+<li><a href="#2-1-剧本示例">2.1 剧本示例</a></li>
+<li><a href="#2-2-示例解读">2.2 示例解读</a></li>
+</ul></li>
+<li><a href="#三-角色-roles">三、角色 - Roles</a>
+<ul>
+<li><a href="#3-1-初始化">3.1 初始化</a></li>
+<li><a href="#3-2-创建任务">3.2 创建任务</a></li>
+<li><a href="#3-3-模板变量">3.3 模板变量</a></li>
+<li><a href="#3-4-建立模板">3.4 建立模板</a></li>
+<li><a href="#3-5-回调程序">3.5 回调程序</a></li>
+<li><a href="#3-6-调用角色">3.6 调用角色</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<p>前面一章简单对Ansible做了个介绍，借助强大的模块可以进行一些日常操作，但操作方式相对零碎，需要更系统化的管理方式。它提供的Playbooks、Roles就可以帮我们来做系统化的管理。</p>
+
+<h1 id="二-剧本-playbooks">二、剧本 - Playbooks</h1>
+
+<p>PlayBook可以通过Yaml的定义方式来告诉Ansible需要调用的模块、将这些模块调用组合起来就形成了一个PlayBook。针对Playbook、Play、Tasks的概念可以看下图。</p>
+
+<p><img src="../../static/uploads/Ansible_Playbook.png" alt="" /></p>
+
+<p>先来看一个示例：</p>
+
+<h2 id="2-1-剧本示例">2.1 剧本示例</h2>
+
+<ul>
+<li>示例场景：安装Nginx服务并从本地模板拷贝个配置文件过去。</li>
+<li>操作步骤：首先创建<code>main.yaml</code>文件和模板文件<code>./templates/test.conf.j2</code></li>
+</ul>
+
+<pre><code>$ cat main.yaml
+- name: Playbook Test
+  hosts: test
+  remote_user: root
+  vars:
+  - listen_port: 81
+  tasks:
+  - name: Install Nginx
+    yum: name=nginx state=present
+  - name: Copy Nginx Config File
+    template:
+      src: test.conf.j2
+      dest: /etc/nginx/conf.d/test.conf
+      owner: nginx
+      group: nginx
+    notify: 
+    - restart nginx
+  - name: Start Nginx
+    service: name=nginx enabled=yes state=started
+  handlers:
+  - name: restart nginx
+    service: name=nginx state=restarted
+
+$ cat templates/test.conf.j2
+server {
+    listen {{listen_port}};
+    server_name _;
+    root /usr/share/nginx/html;
+}
+</code></pre>
+
+<p>测试运行和查看输出：</p>
+
+<pre><code>$ ansible-playbook main.yaml
+
+PLAY [Playbook Test] ********************************************************************************
+TASK [Gathering Facts] ******************************************************************************
+ok: [192.168.88.200]
+
+TASK [Install Nginx] ********************************************************************************
+ok: [192.168.88.200]
+
+TASK [Copy Nginx Config File] ***********************************************************************
+changed: [192.168.88.200]
+
+TASK [Start Nginx] **********************************************************************************
+ok: [192.168.88.200]
+
+RUNNING HANDLER [restart nginx] *********************************************************************
+changed: [192.168.88.200]
+
+PLAY RECAP ******************************************************************************************
+192.168.88.200: ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+</code></pre>
+
+<h2 id="2-2-示例解读">2.2 示例解读</h2>
+
+<ul>
+<li>定义了一个<code>PlayBook</code>，名字是<code>Playbook Test</code>，作用于分类为<code>test</code>的主机群组。</li>
+<li>通过<code>vars</code>来定义了变量，用于传递给配置文件。这里的作用不明显，应该考虑加载变量文件<code>vars_files</code>，这样模块文件里能更充分发挥模板的作用。</li>
+<li>tasks定义了3个任务，分别是安装Nginx、通过模板<code>template</code>将配置文件传递到远端机器、启动Nginx</li>
+<li>handlers和notify对应，配置方式和Task一致，用于做回调处理，上面用于更新配置后重启Nginx。</li>
+</ul>
+
+<p>剧本的基本用法如上，指定需要执行的主机、调用一组模块来实现功能，可以将模块的组合调用作用发挥出来。</p>
+
+<h1 id="三-角色-roles">三、角色 - Roles</h1>
+
+<p>角色的理解更像是可以单独使用的组件，独立于主机之上，可以将Nginx、Mysql这些组件都以角色的方式来编排，实现公用。</p>
+
+<p>Roles有一套自定义的结构，按照结构来定义可以免去维护文件之间的调用关系，Role的初始化及结构：</p>
+
+<p><img src="../../static/uploads/Ansible_Roles.png" alt="" /></p>
+
+<p>接下来，把前面的例子通过Roles的方式来实现：</p>
+
+<h2 id="3-1-初始化">3.1 初始化</h2>
+
+<p>可以在系统默认的角色目录里创建角色，也可以自己指定，如果在自己指定的目录里创建，后面调用角色的Playbook需要和它同目录。通过<code>ansible-galaxy</code>来初始化角色目录结构。</p>
+
+<pre><code>[root@peng nginx]# mkdir roles &amp;&amp; cd roles
+[root@peng nginx]# ansible-galaxy init nginx
+[root@peng nginx]# ls
+defaults  files  handlers  meta  README.md  tasks  templates  tests  vars
+</code></pre>
+
+<h2 id="3-2-创建任务">3.2 创建任务</h2>
+
+<p>任务在<code>tasks</code>目录，<code>main.yml</code>为入口文件，可以通过<code>include_tasks</code>来调用其他任务，文件内也可以编写任务。</p>
+
+<pre><code>$ cat roles/nginx/tasks/main.yml
+---
+# tasks file for nginx
+
+- name: include install.yml
+  include_tasks: install.yml
+
+- name: include conf.yml
+  include_tasks: conf.yml
+
+- name: include start.yaml
+  include_tasks: start.yml
+
+$ cat roles/nginx/tasks/install.yml
+- name: Install Nginx
+  yum: name=nginx state=present
+
+$ cat roles/nginx/tasks/conf.yml
+- name: Copy Nginx Config File
+  template:
+    src: test.conf.j2
+    dest: /etc/nginx/conf.d/test.conf
+    owner: nginx
+    group: nginx
+  notify: 
+  - restart nginx
+
+$ cat roles/nginx/tasks/start.yml
+- name: Start Nginx
+  service: name=nginx enabled=yes state=started
+</code></pre>
+
+<h2 id="3-3-模板变量">3.3 模板变量</h2>
+
+<p>模板变量在vars目录。前面是将变量放在Playbook中，变量较多时放在变量定义文件是更好的选择。</p>
+
+<pre><code>$ cat roles/nginx/vars/main.yml
+---
+# vars file for nginx
+
+listen_port: 8801
+</code></pre>
+
+<p>变量文件中可以支持更多的类型：字典、数组等，定义方式和Yaml的写法是一致的。</p>
+
+<h2 id="3-4-建立模板">3.4 建立模板</h2>
+
+<p>模板在<code>templates</code>目录，内容同前面。在playbook、inventory、模板变量文件中定义的变量以及facts收集到的变量都可以被模板文件访问到，Ansible使用的模板文件的语法是Python的Jinja2。</p>
+
+<h2 id="3-5-回调程序">3.5 回调程序</h2>
+
+<p>回调程序目录在<code>handlers</code></p>
+
+<pre><code>$ cat roles/nginx/handlers/main.yml
+---
+# handlers file for nginx
+
+- name: restart nginx
+  service: name=nginx state=restarted
+</code></pre>
+
+<h2 id="3-6-调用角色">3.6 调用角色</h2>
+
+<p>最后和<code>roles</code>目录同级别创建Playbook并执行:</p>
+
+<pre><code>[root@peng ~]# cat nginx.yml
+
+- hosts: test
+  roles:
+  - nginx
+
+[root@peng ~]# ansible-playbook nginx.yml
+
+PLAY [test] ********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.88.200]
+
+TASK [nginx : include install.yml] *********************************************
+included: /root/roles/nginx/tasks/install.yml for 192.168.88.200
+
+TASK [nginx : Install Nginx] ***************************************************
+ok: [192.168.88.200]
+
+TASK [nginx : include conf.yml] ************************************************
+included: /root/roles/nginx/tasks/conf.yml for 192.168.88.200
+
+TASK [nginx : Copy Nginx Config File] ******************************************
+changed: [192.168.88.200]
+
+TASK [nginx : include start.yaml] **********************************************
+included: /root/roles/nginx/tasks/start.yml for 192.168.88.200
+
+TASK [nginx : Start Nginx] *****************************************************
+ok: [192.168.88.200]
+
+RUNNING HANDLER [restart nginx] ************************************************
+changed: [192.168.88.200]
+
+PLAY RECAP *********************************************************************
+192.168.88.200             : ok=8    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+</code></pre>
+
+<hr />
+
+<p>[1] <a href="https://www.cnblogs.com/kevingrace/p/5569648.html">Ansible-playbook 运维笔记</a></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2021-09.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2021-09.html">2021-09-19 08:50</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/运维.html">运维</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/ansible-1.html">运维自动化工具 - Ansible（1）</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/why-should-we-study-hard.html">奥巴马：我们为什么要努力学习？</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\运维自动化工具 - Ansible（2）.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\运维自动化工具 - Ansible（2）.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

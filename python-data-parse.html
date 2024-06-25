@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python常用库 ( 7 ) - 数据解析</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python常用库 ( 7 ) - 数据解析</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-xml解析">一、XML解析</h1>
+
+<p>这里使用<code>ElementTree</code>方式解析XML</p>
+
+<pre><code>#! /usr/bin/env python
+# coding=utf-8
+
+import xml.etree.ElementTree as ET
+xml_str = '''&lt;SearchRequest from=&quot;tools&quot;&gt;
+    &lt;SearchDetails Nationality = &quot;CN&quot;&gt;
+        &lt;ArrivalDate&gt;2019-05-02&lt;/ArrivalDate&gt;
+        &lt;PropertyReferenceID&gt;135155&lt;/PropertyReferenceID&gt;
+        &lt;Duration&gt;1&lt;/Duration&gt;
+        &lt;RoomRequests&gt;
+            &lt;RoomRequest&gt;
+                &lt;Adults&gt;2&lt;/Adults&gt;
+                &lt;Children&gt;0&lt;/Children&gt;
+                &lt;Infants&gt;0&lt;/Infants&gt;
+            &lt;/RoomRequest&gt;
+            &lt;RoomRequest&gt;
+                &lt;Adults&gt;2&lt;/Adults&gt;
+                &lt;Children&gt;1&lt;/Children&gt;
+                &lt;Infants&gt;1&lt;/Infants&gt;
+            &lt;/RoomRequest&gt;
+        &lt;/RoomRequests&gt;
+    &lt;/SearchDetails&gt;tail
+&lt;/SearchRequest&gt;'''
+</code></pre>
+
+<p>加载数据的方式有两种，从XML文件获取:</p>
+
+<pre><code>#tree = ET.parse(&quot;filename.xml&quot;)
+#root = tree.getroot()
+</code></pre>
+
+<p>从XML字符串获取</p>
+
+<pre><code>root = ET.fromstring(xml_str)
+</code></pre>
+
+<p>第一种方式中tree为<code>ElementTree</code>对象，第二种方式中root为<code>Element</code>对象。每个Element有以下属性：</p>
+
+<ul>
+<li>root.tag 标签名称</li>
+<li>root.attrib 获取属性字典，也可以通过root.get(&lsquo;x&rsquo;)来获取指定的属性。</li>
+<li>root.text 获取xml文本内容</li>
+<li>root.tail 如上面xml中的<code>&lt;/SearchDetails&gt;tail</code>，相对用的比较少。</li>
+</ul>
+
+<p>示例如下：</p>
+
+<pre><code>print(&quot;Tag: {}, Attributes: {}, Text: {}, Tail: {}&quot;.format(root.tag, root.attrib, root.text.strip(), root.tail))
+
+for child in root:
+    print(&quot;Tag: {}, Attributes: {}, Text: {}, Tail: {}&quot;.format(child.tag, child.get(&quot;Nationality&quot;), child.text.strip(), child.tail))
+    print(child.find(&quot;ArrivalDate&quot;).text)
+    print(child.find(&quot;PropertyReferenceID&quot;).text)
+</code></pre>
+
+<h1 id="二-json编解码">二、JSON编解码</h1>
+
+<p>主要包含4个方法，没有<code>s</code>结尾的需要传入文件对象。</p>
+
+<ul>
+<li>json.load()</li>
+<li>json.dump()</li>
+<li>json.loads()</li>
+<li>json.dumps()</li>
+</ul>
+
+<h2 id="2-1-对象编码-字符串解码">2.1 对象编码 - 字符串解码</h2>
+
+<pre><code>import json
+
+data = {
+    &quot;from&quot;: &quot;itopic&quot;,
+    &quot;name&quot;: &quot;JSON数据&quot;,
+}
+
+json_str = json.dumps(data)
+json_data = json.loads(json_str)
+
+print(json_str, json_data)
+</code></pre>
+
+<h2 id="2-2-json与文件">2.2 JSON与文件</h2>
+
+<pre><code>with open('data.json', 'w') as f:
+    json.dump(data, f)
+
+with open('data.json', 'r') as f:
+    data_obj = json.load(f)
+    print(data_obj)
+</code></pre>
+
+<h1 id="三-csv读取与解析">三、CSV读取与解析</h1>
+
+<ul>
+<li>csv.reader()</li>
+<li>csv.DictReader</li>
+<li>csv.writer()</li>
+<li>csv.DictWriter()</li>
+</ul>
+
+<h2 id="3-1-csv写入">3.1 CSV写入</h2>
+
+<pre><code>import csv
+
+headers = [&quot;Time&quot;, &quot;From&quot;, &quot;Title&quot;]
+rows = [
+    (&quot;2019-04-06&quot;, &quot;web&quot;, &quot;Title1&quot;),
+    (&quot;2019-04-07&quot;, &quot;android&quot;, &quot;Title2&quot;),
+]
+
+with open(&quot;test.csv&quot;, &quot;w&quot;) as f:
+    f_csv = csv.writer(f)
+    f_csv.writerow(headers)
+    f_csv.writerows(rows)
+
+# 按字典的方式进行写入
+rows = [
+    {&quot;Time&quot;: &quot;2019-04-08&quot;, &quot;From&quot;: &quot;web&quot;, &quot;Title&quot;: &quot;Title1&quot;},
+    {&quot;Time&quot;: &quot;2019-04-09&quot;, &quot;From&quot;: &quot;android&quot;, &quot;Title&quot;: &quot;Title2&quot;},
+]
+with open(&quot;test.csv&quot;, &quot;w&quot;) as f:
+    f_csv = csv.DictWriter(f, headers)
+    f_csv.writeheader()
+    f_csv.writerows(rows)
+</code></pre>
+
+<h2 id="3-2-csv读取">3.2 CSV读取</h2>
+
+<pre><code>import csv
+from collections import namedtuple
+
+# 读取CSV文件，并按索引方式读取
+with open(&quot;test.csv&quot;, &quot;r&quot;) as f:
+    f_csv = csv.reader(f)
+    headers = next(f_csv)
+    for row in f_csv:
+        print(row[0], row)
+
+# 读取CSV文件，并按字段方式读取
+with open(&quot;test.csv&quot;, &quot;r&quot;) as f:
+    f_csv = csv.DictReader(f)
+    for row in f_csv:
+        print(row[&quot;Time&quot;], row)
+
+# 读取CSV文件，按对方的方式读取
+with open(&quot;test.csv&quot;, &quot;r&quot;) as f:
+    f_csv = csv.reader(f)
+    headers = next(f_csv)
+    Row = namedtuple('Row', headers)
+    for r in f_csv:
+        row = Row(*r)
+        print(row.Time, row)
+</code></pre>
+
+<h1 id="四-html解析">四、HTML解析</h1>
+
+<p>通过<code>requests</code>获取内容，然后在用<code>lxml</code>库通过<code>xpath</code>来解析节点。下面为抓取本博客所有文章。</p>
+
+<pre><code>import requests
+from lxml import html
+
+URL = &quot;http://itopic.org&quot;
+
+for topic in html.fromstring(requests.get(URL).text).xpath('//div[@id=&quot;left-sider&quot; or @id=&quot;right-sider&quot;]/ul/li'):
+    print(&quot;%s %s %s%s&quot; % (topic.text, topic.xpath('./a/text()')[0], URL, topic.xpath('./a/@href')[0]))
+</code></pre>
+
+<p>requests+lxml可参考：<code>http://x-wei.github.io/python_crawler_requests_lxml.html</code></p>
+
+<h1 id="五-base64编解码">五、BASE64编解码</h1>
+
+<ul>
+<li>base64.b64encode()</li>
+<li>base64.b64decode()</li>
+</ul>
+
+<pre><code>import base64
+
+s = base64.b64encode(&quot;Base64数据&quot;)
+print(s)
+print(base64.b64decode(s))
+</code></pre>
+
+<h1 id="六-md5编码">六、MD5编码</h1>
+
+<pre><code>import hashlib
+
+s = &quot;Hello Python.&quot;
+
+m = hashlib.md5()
+m.update(s)
+print(m.hexdigest())
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-04.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-04.html">2016-04-12 13:14</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/爬虫.html">爬虫</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/python-requests.html">Python常用库 ( 6 ) - HTTP请求</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/python-logging.html">Python常用库 ( 8 ) - 日志模块</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 7 ) - 数据解析.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 7 ) - 数据解析.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

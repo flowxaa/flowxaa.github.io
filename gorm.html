@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Gorm框架学习</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Gorm框架学习</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一 、概述</a>
+<ul>
+<li><a href="#1-1-安装">1.1 安装</a></li>
+<li><a href="#1-2-连接">1.2 连接</a></li>
+<li><a href="#1-3-调试模式">1.3 调试模式</a></li>
+</ul></li>
+<li><a href="#二-模型定义">二、模型定义</a></li>
+<li><a href="#三-增删查改">三、增删查改</a>
+<ul>
+<li><a href="#3-1-数据插入">3.1 数据插入</a></li>
+<li><a href="#3-2-数据更新">3.2 数据更新</a></li>
+<li><a href="#3-3-删除数据">3.3 删除数据</a></li>
+<li><a href="#3-4-查询数据">3.4 查询数据</a></li>
+<li><a href="#3-5-原生sql">3.5 原生SQL</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一 、概述</h1>
+
+<p>The fantastic ORM library for Golang aims to be developer friendly.</p>
+
+<h2 id="1-1-安装">1.1 安装</h2>
+
+<pre><code>go get -u gorm.io/gorm
+go get -u gorm.io/driver/mysql
+</code></pre>
+
+<h2 id="1-2-连接">1.2 连接</h2>
+
+<pre><code>import (
+  &quot;gorm.io/driver/mysql&quot;
+  &quot;gorm.io/gorm&quot;
+)
+
+func main() {
+  // 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+  dsn := &quot;user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&amp;parseTime=True&amp;loc=Local&quot;
+  db, err := gorm.Open(mysql.Open(dsn), &amp;gorm.Config{})
+}
+</code></pre>
+
+<h2 id="1-3-调试模式">1.3 调试模式</h2>
+
+<pre><code>db, err = gorm.Open(mysql.Open(dsn), &amp;gorm.Config{
+    Logger:logger.Default.LogMode(logger.Info),
+})
+</code></pre>
+
+<p>或者</p>
+
+<pre><code>db.Debug().First(&amp;user)
+</code></pre>
+
+<h1 id="二-模型定义">二、模型定义</h1>
+
+<p>假设数据库中的表结构如下：</p>
+
+<pre><code>CREATE TABLE IF NOT EXISTS `user` (
+    user_id INT(4) NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+    mobile VARCHAR(20) NOT NULL DEFAULT '' COMMENT '手机号',
+    nickname VARCHAR(50) NOT NULL DEFAULT '' COMMENT '昵称',
+    age INT(4) NOT NULL DEFAULT 0 COMMENT '年龄',
+    intro VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '简介',
+    created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (user_id)
+) ENGINE = INNODB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT '用户记录表';
+</code></pre>
+
+<p>转换为模型后定义如下，</p>
+
+<pre><code>type User struct {
+	UserId    int       `gorm:&quot;column:id;primaryKey&quot;`
+	Mobile    string    `gorm:&quot;column:mobile&quot;`
+	Nickname  string    `gorm:&quot;column:nickname&quot;`
+	Age       int       `gorm:&quot;column:age&quot;`
+	Intro     string    `gorm:&quot;column:intro&quot;`
+	CreatedTs time.Time `gorm:&quot;column:created_ts&quot;`
+}
+
+func (u User) TableName() string {
+	return &quot;user&quot;
+}
+</code></pre>
+
+<p>标签定义，更多可<a href="https://gorm.io/zh_CN/docs/models.html#%E5%AD%97%E6%AE%B5%E6%A0%87%E7%AD%BE">参考官网</a></p>
+
+<table>
+<thead>
+<tr>
+<th align="left">标签名</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td align="left">column</td>
+<td align="left">指定 db 列名</td>
+</tr>
+
+<tr>
+<td align="left">primaryKey</td>
+<td align="left">将列定义为主键</td>
+</tr>
+
+<tr>
+<td align="left">unique</td>
+<td align="left">将列定义为唯一键</td>
+</tr>
+
+<tr>
+<td align="left">default</td>
+<td align="left">定义列的默认值</td>
+</tr>
+</tbody>
+</table>
+
+<h1 id="三-增删查改">三、增删查改</h1>
+
+<h2 id="3-1-数据插入">3.1 数据插入</h2>
+
+<p><strong>1. 插入数据</strong></p>
+
+<pre><code>user := User{
+	Mobile:    &quot;13800000001&quot;,
+	Nickname:  &quot;demo&quot;,
+	Age:       18,
+	Intro:     &quot;Hello World&quot;,
+	CreatedTs: time.Now(),
+}
+res := db.Create(&amp;user)
+fmt.Println(res.Error, res.RowsAffected, user.UserId)
+</code></pre>
+
+<p><strong>2. 插入时SQL只使用Select中的字段插入</strong></p>
+
+<pre><code>db.Select(&quot;mobile&quot;, &quot;nickname&quot;).Create(&amp;user).Error
+</code></pre>
+
+<p><strong>3. 插入时SQL上忽略created_ts字段</strong></p>
+
+<pre><code>db.Omit(&quot;created_ts&quot;).Create(&amp;user).Error
+</code></pre>
+
+<p><strong>4. 批量插入</strong>，且插入时忽略created_ts字段。</p>
+
+<pre><code>users := []User{
+	{Mobile: &quot;13800000001&quot;},
+	{Mobile: &quot;13800000002&quot;},
+	{Mobile: &quot;13800000003&quot;},
+}
+return db.Omit(&quot;created_ts&quot;).Create(&amp;users).Error
+</code></pre>
+
+<p>批量插入时分批插入，每批次执行batchSize条：</p>
+
+<pre><code>db.CreateInBatches(&amp;users, 2).Error
+</code></pre>
+
+<p><strong>5. 存在更新，不存在插入</strong></p>
+
+<p>与Create相似的还有一个Save方法，如果主键为零值则执行插入，否则执行更新操作。</p>
+
+<pre><code>db.Save(&amp;user)
+</code></pre>
+
+<h2 id="3-2-数据更新">3.2 数据更新</h2>
+
+<p><strong>1. 更新单列</strong></p>
+
+<p>插入表名或者结构体</p>
+
+<pre><code># UPDATE `user` SET `mobile`='13800000002' WHERE id = 1
+db.Table(&quot;user&quot;).Where(&quot;id = ?&quot;, 1).Update(&quot;mobile&quot;, &quot;13800000002&quot;)
+db.Model(&amp;User{}).Where(&quot;id = ?&quot;, 1).Update(&quot;mobile&quot;, &quot;13800000002&quot;)
+
+db.Model(&amp;user).Update(&quot;mobile&quot;, &quot;13800000002&quot;)
+</code></pre>
+
+<p><strong>2. 更新多列</strong></p>
+
+<p><code>Updates</code> 方法支持 <code>struct</code> 和 <code>map[string]interface{}</code> 参数。当使用 <code>struct</code> 更新时，默认情况下，GORM 只会更新非零值的字段</p>
+
+<pre><code>db.Model(&amp;user).Updates(User{Age: 1})
+</code></pre>
+
+<p>如果上面年龄传0则不会做任何更新，因为0为整型的零值。此时可以使用map来更新。</p>
+
+<pre><code># UPDATE `user` SET `age`=0 WHERE `user_id` = 1
+db.Model(&amp;user).Updates(map[string]interface{}{&quot;age&quot;: 0})
+</code></pre>
+
+<p>同时也支持<code>Select()</code>、<code>Omit()</code>、<code>Table(&quot;user&quot;)</code>、<code>Table(&amp;User{})</code>的方式，如：</p>
+
+<pre><code># UPDATE `user` SET `age`=99 WHERE user_id in (1,2,3) AND user_id &lt; 3
+db.Model(&amp;User{}).Select(&quot;age&quot;).
+	Where(&quot;user_id in ?&quot;, []int{1, 2, 3}).
+	Where(&quot;user_id &lt; 3&quot;).
+	Updates(User{Nickname: &quot;Test&quot;, Age: 99})
+</code></pre>
+
+<h2 id="3-3-删除数据">3.3 删除数据</h2>
+
+<p><strong>1. 按主键删除</strong></p>
+
+<pre><code># DELETE FROM `user` WHERE `user`.`user_id` = 1
+db.Delete(&amp;User{}, 1)
+
+# DELETE FROM `user` WHERE `user`.`user_id` IN (1,2,3)
+db.Delete(&amp;User{}, []int{1, 2, 3})
+</code></pre>
+
+<p><strong>2. 传入结构体删除</strong></p>
+
+<pre><code># DELETE FROM `user` WHERE `user`.`user_id` = 1
+db.Delete(&amp;user)
+</code></pre>
+
+<p><strong>3. 按字段删除</strong></p>
+
+<pre><code># DELETE FROM `user` WHERE age &lt; 3
+db.Where(&quot;age &lt; ?&quot;, 3).Delete(&amp;User{})
+</code></pre>
+
+<h2 id="3-4-查询数据">3.4 查询数据</h2>
+
+<p>GORM 提供了 <code>First</code>、<code>Take</code>、<code>Last</code> 方法，以便从数据库中检索单个对象。当查询数据库时它添加了 <code>LIMIT 1</code> 条件，且没有找到记录时，它会返回 <code>ErrRecordNotFound</code> 错误</p>
+
+<p><strong>1. 查询单条记录</strong></p>
+
+<pre><code>// 获取一条记录，没有指定排序字段 SELECT * FROM users LIMIT 1;
+db.Take(&amp;user)
+
+// 获取第一条记录（主键升序）SELECT * FROM users ORDER BY id LIMIT 1;
+db.First(&amp;user)
+
+// 获取最后一条记录（主键降序）SELECT * FROM users ORDER BY id DESC LIMIT 1;
+db.Last(&amp;user)
+
+result := db.First(&amp;user)
+result.RowsAffected // 返回找到的记录数
+result.Error        // returns error or nil
+
+// 检查 ErrRecordNotFound 错误
+errors.Is(result.Error, gorm.ErrRecordNotFound)
+
+//查询1条，但是不抛错
+db.Limit(1).Find(&amp;user)
+</code></pre>
+
+<p><strong>2. 根据主键检索</strong></p>
+
+<pre><code># SELECT * FROM users WHERE id = 10;
+db.First(&amp;user, 10)
+
+# SELECT * FROM users WHERE id = 10;
+db.First(&amp;user, &quot;10&quot;)
+
+# SELECT * FROM users WHERE id IN (1,2,3);
+db.Find(&amp;users, []int{1,2,3})
+</code></pre>
+
+<p><strong>3. 查询多条记录</strong></p>
+
+<pre><code>users := []User{}
+db.Find(&amp;users)
+</code></pre>
+
+<p>也可以设置一些筛选条件，通过链式操作</p>
+
+<pre><code># SELECT `user_id`,`nickname` FROM `user` WHERE id &gt; 0 ORDER BY user_id desc LIMIT 10 OFFSET 0
+db.Where(&quot;user_id &gt; ?&quot;, 0).
+	Select(&quot;user_id&quot;, &quot;nickname&quot;).
+	Order(&quot;user_id desc&quot;).
+	Limit(10).Offset(0).
+	Find(&amp;user)
+</code></pre>
+
+<p><strong>4. 查询Count</strong></p>
+
+<pre><code>var total int64 = 0
+# SELECT count(1) FROM `user`
+db.Model(User{}).Count(&amp;total)
+</code></pre>
+
+<p><strong>5. 分组Group</strong></p>
+
+<pre><code>type result struct {
+	Age   int
+	Count int
+}
+var res result
+db.Model(User{}).Select(&quot;age, count(*) as count&quot;).Group(&quot;age&quot;).Scan(&amp;res)
+</code></pre>
+
+<h2 id="3-5-原生sql">3.5 原生SQL</h2>
+
+<p>原生查询 SQL 和 <code>Scan</code></p>
+
+<pre><code>type Result struct {
+  ID   int
+  Name string
+  Age  int
+}
+
+var result Result
+db.Raw(&quot;SELECT id, name, age FROM users WHERE name = ?&quot;, 3).Scan(&amp;result)
+
+db.Raw(&quot;SELECT id, name, age FROM users WHERE name = ?&quot;, 3).Scan(&amp;result)
+
+var age int
+db.Raw(&quot;SELECT SUM(age) FROM users WHERE role = ?&quot;, &quot;admin&quot;).Scan(&amp;age)
+
+var users []User
+db.Raw(&quot;UPDATE users SET name = ? WHERE age = ? RETURNING id, name&quot;, &quot;jinzhu&quot;, 20).Scan(&amp;users)
+</code></pre>
+
+<p><code>Exec</code> 原生 SQL</p>
+
+<pre><code>db.Exec(&quot;DROP TABLE users&quot;)
+db.Exec(&quot;UPDATE orders SET shipped_at = ? WHERE id IN ?&quot;, time.Now(), []int64{1, 2, 3})
+
+// Exec with SQL Expression
+db.Exec(&quot;UPDATE users SET money = ? WHERE name = ?&quot;, gorm.Expr(&quot;money * ? + ?&quot;, 10000, 1), &quot;jinzhu&quot;)
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2022-12.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2022-12.html">2022-12-31 21:06</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/golang.html">Golang</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/gin.html">Gin框架学习</a>
+            </li>
+            
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\go\Gorm框架学习.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\go\Gorm框架学习.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Redis集群数据迁移</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Redis集群数据迁移</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="同步工具-redisshake">同步工具 - RedisShake</h1>
+
+<p>Redis-shake是阿里云自研的开源Redis数据传输工具，基于Linux环境，支持对Redis数据进行解析（decode）、恢复（restore）、备份（dump）和同步（sync或rump），灵活高效。在不方便使用DTS的迁移场景，您可以尝试使用Redis-shake进行迁移。</p>
+
+<pre><code>$ ./redis-shake.linux -conf=redis-shake.conf -type=sync
+</code></pre>
+
+<p><strong>通过RedisShake迁移Codis：</strong></p>
+
+<p>1、配置源信息(Codis Serer列表)</p>
+
+<pre><code>source.type = standalone
+source.address = 127.0.0.1:6379;127.0.0.1:6380;127.0.0.1:6381
+</code></pre>
+
+<p>2、配置目的信息(Codis Proxy列表)</p>
+
+<pre><code>target.type = proxy
+target.address = 127.0.0.2:10000;127.0.0.1:10000
+</code></pre>
+
+<p>3、设置<code>big_key_threshold = 1</code>，以及启用<code>filter.lua = true</code>。</p>
+
+<pre><code>big_key_threshold = 1
+filter.lua = true
+</code></pre>
+
+<p>启动后会执行<code>bgsave</code>，可以看看各个节点是否有正确生成。如果内存不够bgsave失败可能会丢数据，可以尝试 <code>/etc/sysctl.conf</code>增加</p>
+
+<pre><code>vm.overcommit_memory = 1
+</code></pre>
+
+<p>[1] <a href="https://github.com/alibaba/RedisShake/wiki">RedisShake wiki</a></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2019-12.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2019-12.html">2019-12-28 13:49</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/redis.html">Redis</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/python.html">Python入门知识点整理</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/will-kubernetes-kill-devops.html">Kubernetes 会不会“杀死” DevOps？</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\redis\Redis集群数据迁移.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\redis\Redis集群数据迁移.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

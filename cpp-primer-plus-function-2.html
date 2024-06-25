@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>C++学习笔记 – 函数探幽</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">C++学习笔记 – 函数探幽</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="内联函数">内联函数</h1>
+
+<p>内联函数的编译代码与其他程序代码“内联”起来，也就是说，编译器将使用相应的函数代码替换函数调用。对于内联代码，程序无需跳到另一个位置处执行代码，再跳回来。因此，内联函数的运行速度比常规函数稍快，但代价是需要占用更多内存。</p>
+
+<p>通常的做法是省略函数原型，将整个定义放在本应提供原型的地方。程序员请求将函数作为内联函数时，编译器不一定会满足这种要求。它可能认为该函数过大或注意到函数调用了自己（内联函数不能递归），因此不能将其作为内联函数；而有些编译器没有启用或实现这种特性。</p>
+
+<pre><code>inline double square(double x){return x*x;}
+</code></pre>
+
+<h1 id="引用变量">引用变量</h1>
+
+<p>引用是已定义变量的别名，主要用途是用作函数的形参。通过将引用变量用作参数，函数将使用原始数据，而不是其副本。这样除指针之外，引用也为函数处理大型结构提供了方便的途径。</p>
+
+<p><strong>创建引用变量</strong></p>
+
+<p>C和C++使用&amp;符号来指示变量的地址。C++给&amp;符号赋予了另一种含义，将其用来声明引用。例如，将rodents作为rats变量的别名，可以这样做：</p>
+
+<pre><code>int rats;
+int &amp; rodents = rats;
+</code></pre>
+
+<p>其中，&amp;不是地址运算符，而是类型标识符的一部分。就像声明中的char*指的是指向char的指针一样，int&amp;指的是指向int的引用。上述引用声明允许将rats和rodents互换 —— 他们指向相同的值和内存单元。</p>
+
+<p>引用接近const指针，必须在创建时进行初始化，一单与某个变量关联起来，就将一直肖忠于它。</p>
+
+<p>按引用传递和按值传递看起来相同，只能通过原型或函数定义才能知道函数是按引用传递的。</p>
+
+<pre><code>#include &lt;iostream&gt;
+ 
+void swapr(int &amp;a, int&amp;b);
+ 
+using namespace std;
+void main()
+{
+    int a = 300, b= 500;
+    swapr(a, b);
+}
+ 
+void swapr(int &amp;a, int&amp;b)
+{
+    int temp;
+    temp = a;
+    a = b;
+    b=temp;
+}
+</code></pre>
+
+<p>上面代码传递a、b的引用，可以对其值进行修改，若限制其修改，可使用常量引用：</p>
+
+<pre><code>int func(const int &amp;);
+</code></pre>
+
+<p><strong>临时变量、引用参数和const</strong></p>
+
+<p>如果接受引用参数的意图是修改作为参数传递的变量，则创建临时变量将阻止这种意图的实现。解决方式是禁止创建临时变量。如果指定引用为const，不可以修改传递的值，此时生成临时变量不会造成任何影响。</p>
+
+<p><strong>引用与结构体</strong></p>
+
+<p>使用结构引用参数的方式与使用基本变量引用相同，只需在声明结构参数时使用引用运算符&amp;即可。如：</p>
+
+<pre><code>free_thorws &amp; accumulate(free_throws &amp; target, const free_thorws &amp; source);
+</code></pre>
+
+<p>什么时候使用引用、什么时候使用指针？ 不需要修改参数：</p>
+
+<ul>
+<li>如果数据对象很小，如内置数据类型或小型结构，则按值传递。</li>
+<li>如果数据对象是数组，则使用指针，因为这是唯一选择，并将指针声明为指向const的唯一指针。</li>
+<li>如果数据对象是较大的结构，则使用const指针或const引用，以提供程序的效率。节省复制结构需要的时间和空间。</li>
+<li>如果数据对象是类对象，则使用const引用。</li>
+</ul>
+
+<p>需要修改参数：</p>
+
+<ul>
+<li>如果数据对象是内置数据类型，则使用指针。</li>
+<li>如果数据对象是数组，则只能使用指针。</li>
+<li>如果数据对象是结构，则使用引用或指针。</li>
+<li>如果数据对象是类对象，则使用引用。</li>
+</ul>
+
+<h1 id="默认参数">默认参数</h1>
+
+<p>默认参数之的是当函数调用中省略了实参时自动使用的一个值。设置默认参数只需在函数原型中指定即可，如：</p>
+
+<pre><code>char * left(const char * str, int n=1);
+</code></pre>
+
+<p>对于带参数列表的函数，必须从右向左添加默认值。</p>
+
+<h1 id="函数重载">函数重载</h1>
+
+<p>函数重载的关键是函数的参数列表 —— 也称为函数特征标。C++允许定义名称相同的函数，条件是他们是特征标不同。</p>
+
+<pre><code>#include &lt;iostream&gt;
+ 
+char * left(const char * str, int n);
+unsigned long left(unsigned long num, int n);
+ 
+using namespace std;
+void main()
+{
+    cout &lt;&lt; left(&quot;abc&quot;, 2) &lt;&lt; endl;
+    cout &lt;&lt; left(12345, 3) &lt;&lt; endl;
+}
+ 
+char * left(const char * str, int n)
+{
+    if(n &lt; 0) n = 0;
+    char *rtn = new char[n+1];
+    int i = 0;
+    while(i &lt; n &amp;&amp; str[i]) {
+        rtn[i++] = str[i];
+    }
+    while(i &lt;= n) {
+        rtn[i++] = '\0';
+    }
+    return rtn;
+ 
+}
+unsigned long left(unsigned long num, int n)
+{
+    int len = 1;
+    unsigned long t = num;
+    if(n &lt;= 0) n=0;
+    while(t = t / 10) {
+        len ++;
+    }
+    if(n &gt;= len) {
+        return num;
+    }
+    n = len - n;
+    while(n--) {
+        num = num / 10;
+    }
+    return num;
+}
+</code></pre>
+
+<h1 id="函数模版">函数模版</h1>
+
+<pre><code>#include &lt;iostream&gt;
+ 
+template &lt;typename T&gt;
+void Swap(T &amp;a, T &amp;b);
+ 
+void main()
+{
+    using namespace std;
+    int i = 10, j = 20;
+    Swap(i, j);
+    float x = 1.5f, y=2.1f;
+    Swap (x, y);
+    cout &lt;&lt; i &lt;&lt; j &lt;&lt; x &lt;&lt; y;
+}
+ 
+template &lt;typename T&gt;
+void Swap(T &amp;a, T &amp;b)
+{
+    T temp;
+    temp = a;
+    a = b;
+    b = temp;
+}
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2015-03.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2015-03.html">2015-03-30 22:45</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/c++.html">C++</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/cpp-primer-plus-function.html">C++学习笔记 – 函数</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/gcc.html">GCC简介</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\cpp\C++学习笔记 – 函数探幽.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\cpp\C++学习笔记 – 函数探幽.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

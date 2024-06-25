@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Lua实现类与继承</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Lua实现类与继承</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>Lua中没有类的概念，但可以通过table、函数以及一些语言特性来模拟类。table的值可以为函数。看下面这段代码：</p>
+
+<pre><code>LogUtil = {msg_prefix = string.format(&quot;%s &quot;, os.date(&quot;%H:%M:%S&quot;, os.time())) }
+LogUtil.write = function(msg)
+    print(LogUtil.msg_prefix .. msg .. &quot;\r\n&quot;)
+end
+ 
+LogUtil.write(&quot;This is a Notice Info&quot;)
+</code></pre>
+
+<p>定义一个日志table，table有一个名为msg_prefix的键以及一个名为write的键。msg_prefix指向一个字符串，write指向一个方法，然后调用了write方法。这里看起来就是一个table的操作，但也可以换个角度来看：定义了一个日志类，类里有一个静态成员属性msg_prefix以及一个静态成员方法write。并且调用了write方法。</p>
+
+<p><strong>这也就是Lua实现类的基础。</strong></p>
+
+<p>上面代码中，LogUtil为全局变量。如果重写了它的值将会导致方法不可用。所以可以用一个额外的参数来传入对象，这个参数经常为self或this，好比Python类方法中也需要显示的传入self对象。如：</p>
+
+<pre><code>LogUtil = {msg_prefix = string.format(&quot;%s &quot;, os.date(&quot;%H:%M:%S&quot;, os.time())) }
+ 
+LogUtil.write = function(self, msg)
+    print(self.msg_prefix .. msg .. &quot;\r\n&quot;)
+end
+ 
+LogA = LogUtil
+LogUtil = nil
+LogA.write(LogA, &quot;This is a LogA Info&quot;)
+</code></pre>
+
+<p>但这样子调用的时候也需要传入self参数，不过，Lua也提供了通过使用冒号操作符来隐藏这个参数的声明。看下面，</p>
+
+<pre><code>LogUtil = {msg_prefix = string.format(&quot;%s &quot;, os.date(&quot;%H:%M:%S&quot;, os.time())) }
+ 
+function LogUtil:write(msg)
+    print(self.msg_prefix .. msg .. &quot;\r\n&quot;)
+end
+ 
+LogA = LogUtil
+LogA:write(&quot;This is a LogA Info&quot;)
+</code></pre>
+
+<p>类定义还是被调用，通过冒号方式的调用都会自动将类作为self参数传入，而省去了主动传入的麻烦。还有， function提在前面了，可以看到这里更有函数的味道了。上面两段代码是等价的，归纳下就是：</p>
+
+<pre><code>function class.a.b:c = function(param) body end
+</code></pre>
+
+<p>等价于</p>
+
+<pre><code>class.a.b.c = function(self, param) body end
+</code></pre>
+
+<p>可能，会被上面的点、冒号、self搞混，其实可以统一使用冒号的方式来定义与调用类方法。</p>
+
+<p>到目前为止还只是一些属性和方法的集合，并没有实例化类，属性的改变会导致全局的变化。接下来看如何实现多个互不影响的类的实例。</p>
+
+<h1 id="类的实例">类的实例</h1>
+
+<p>在Lua中有一个神奇的东西叫做metatable(元表)。metatable也是键值对。当访问table中一个不存在的属性时就会触发一些事件。比如当设置了元方法__index时 表示当调用当前table中不存在的属性或方法时会到元方法对应的table中去找，从而实现继承的效果。</p>
+
+<pre><code>setmetatable(a, {__index = b})
+</code></pre>
+
+<p>这样，对象a调用任何不存在的成员都会到对象b中查找。术语上，可以将b看作类，a看作对象。</p>
+
+<pre><code>LogUtil = {msg_prefix = string.format(&quot;%s &quot;, os.date(&quot;%H:%M:%S&quot;, os.time())) }
+ 
+function LogUtil:write(msg)
+    print(self.msg_prefix .. msg .. &quot;\r\n&quot;)
+end
+ 
+-- 创建实例化的new方法，名字可以任意制定。
+function LogUtil:new(o)
+    o = o or {}
+    setmetatable(o, self)
+    self.__index = self
+    return o
+end
+ 
+LogA = LogUtil:new()
+LogA.msg_prefix = &quot;&quot;
+LogA:write(&quot;This is a LogA Info&quot;)
+ 
+LogB = LogUtil:new{msg_prefix = &quot;Hello.&quot;}
+LogB:write(&quot;This is a LogB Info&quot;)
+ 
+--[[
+-- output:
+This is a LogA Info
+ 
+Hello.This is a LogB Info
+]]
+</code></pre>
+
+<p>可以看到，A和B的操作是互不影响的，相当于对类进行了实例化。有两点需要注意的地方：</p>
+
+<ul>
+<li>1、new方法中的setmetatable(o, self)只是做了一个小小的优化，不需要创建一个额外的表作为LogA或LogB的元表。再简单点说， 元表只是取了LogUtil的一个__index键。对于LogUtil来说，只是多了一个__index键而已。</li>
+<li>2、LogB实例化的时候参数为一个table，此时可以省略括号。表示在o中已经设置了msg_prefix，不再需要去LogUtil寻找，达到重写的目的。</li>
+</ul>
+
+<p>当执行LogA:write()时先在LogA中查找，LogA没有此方法，此时会到LogUtil中去找。基本上已经也有了继承的概念。</p>
+
+<h1 id="类的继承">类的继承</h1>
+
+<p>在前面基础上我们调整下调用，LogA为LogUtil的实例，找不到的方法都到LogUtil中去找。如果想要LogB继承自LogA呢？可以直接在new一下LogA。</p>
+
+<pre><code>LogA = LogUtil:new{msg_prefix = 'A:'}
+LogA:write(&quot;This is a LogA Info&quot;)
+ 
+LogB = LogA:new{}
+LogB:write(&quot;This is a LogB Info&quot;)
+</code></pre>
+
+<p>LogA再执行new方法时，此时的self参数为LogA了，所以相当于LogB继承自LogA。</p>
+
+<p>同样， Lua还可以实现多重继承，成员属性私有等，这些就留待以后去深究了。</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-01.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-01.html">2016-01-17 20:22</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/lua.html">Lua</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/lua-language.html">Lua基础语法</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/httpie.html">HTTP命令行客户端 - HTTPie</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\lua\Lua实现类与继承.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\lua\Lua实现类与继承.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

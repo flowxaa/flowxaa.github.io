@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>SQLite数据库入门笔记</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">SQLite数据库入门笔记</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-简介">一、简介</a></li>
+<li><a href="#二-建表操作">二、建表操作</a>
+<ul>
+<li><a href="#2-1-语句简介">2.1 语句简介</a></li>
+<li><a href="#2-2-数据库">2.2 数据库</a></li>
+<li><a href="#2-3-数据类型">2.3 数据类型</a></li>
+<li><a href="#2-3-日期类型及函数">2.3 日期类型及函数</a></li>
+<li><a href="#2-4-数据约束">2.4 数据约束</a></li>
+<li><a href="#2-5-创建索引">2.5 创建索引</a></li>
+<li><a href="#2-6-修改操作">2.6 修改操作</a></li>
+<li><a href="#2-7-视图">2.7 视图</a></li>
+</ul></li>
+<li><a href="#三-数据读取">三、数据读取</a></li>
+<li><a href="#四-命令行">四、命令行</a>
+<ul>
+<li><a href="#4-1-调整显示">4.1 调整显示</a></li>
+<li><a href="#4-2-查看数据库及表">4.2 查看数据库及表</a></li>
+<li><a href="#4-3-数据导出">4.3 数据导出</a></li>
+<li><a href="#4-4-导入csv格式">4.4 导入CSV格式</a></li>
+<li><a href="#4-5-导出csv格式">4.5 导出CSV格式</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-简介">一、简介</h1>
+
+<p><code>SQLite</code>是一个零配置的关系型数据库，支持大部分<code>SQL</code>语句。就像Linux系统下会自带Python一样，通常也会安装<code>Sqlite3</code>，可以通过<code>sqlite3</code>命令来确认是否已经安装：</p>
+
+<pre><code>$ sqlite3
+SQLite version 3.24.0 2018-06-04 14:10:15
+Enter &quot;.help&quot; for usage hints.
+Connected to a transient in-memory database.
+Use &quot;.open FILENAME&quot; to reopen on a persistent database.
+sqlite&gt;
+</code></pre>
+
+<p>虽然<code>SQLite</code>支持的功能大部分<code>Mysql</code>都有，但对比<code>SQLite</code>就会发现，<code>SQLite</code>小巧、零配置、移植方便、不需要额外启动服务端进程、功能也相当完善，较擅长在一些独立项目上提供本地存储，比纯文本方式方便，比<code>Mysql</code>清爽。</p>
+
+<p>安装上可直接从<a href="https://www.sqlite.org/download.html">官网</a>上下载，相关文档可从<a href="http://www.sqlitetutorial.net/">SQLite TuTorial</a>上查看。操作工具可以直接使用<code>命令行</code>或者<a href="https://sqlitestudio.pl/index.rvt?act=download">SQLite Studio</a>或者<a href="https://extendsclass.com/sqlite-browser.html">ExtendsClass</a>或者<code>Navicat</code>。</p>
+
+<h1 id="二-建表操作">二、建表操作</h1>
+
+<p>本章节围绕<code>CREATE TABLE</code>来进行展开说明。</p>
+
+<pre><code>CREATE TABLE [IF NOT EXISTS] [schema_name].table_name (
+ column_1 data_type PRIMARY KEY,
+ column_2 data_type NOT NULL,
+ column_3 data_type DEFAULT 0,
+ table_constraint
+) [WITHOUT ROWID];
+</code></pre>
+
+<h2 id="2-1-语句简介">2.1 语句简介</h2>
+
+<ul>
+<li><code>CREATE TABLE [IF NOT EXISTS]</code>：可以通过 <code>IF NOT EXISTS</code>建表，表不存在是创建，存在时忽略。</li>
+<li><code>schema_name</code>：指定数据库。</li>
+<li><code>table_name</code>: 表前缀不可以为<code>sqlite_</code>，该前缀仅限内部使用。报错示例：<code>Error: object name reserved for internal use: sqlite_test</code></li>
+<li><code>column_1 data_type</code>指定字段名和字段类型。</li>
+<li>约束：可以指定<code>PRIMARY KEY</code>，<code>UNIQUE</code>，<code>NOT NULL</code>和<code>CHECK</code>约束，可以指定字段上指定，也有一些可以在表上指定。</li>
+<li><code>WITHOUT ROWID</code>：默认情况下，<code>SQLite</code>中的每一行都有一个特殊的列，通常称为<code>rowid</code>，它唯一地标识表中的那一行。 但是，如果在CREATE TABLE语句的末尾添加了短语<code>WITHOUT ROWID</code>，则省略特殊的<code>rowid</code>列。 省略rowid有时候有空间和性能优势。 WITHOUT ROWID表是使用聚簇索引作为主键的表。</li>
+<li><code>SQLite</code>不支持<code>COMMENT</code>语句，建表时可以使用 <code>--</code> 来表示注释。</li>
+</ul>
+
+<p>如：</p>
+
+<pre><code>CREATE TABLE IF NOT EXISTS article (
+    article_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title text NOT NULL, -- 标题
+    content text, -- 内容
+    status INTEGER NOT NULL DEFAULT 1
+);
+</code></pre>
+
+<h2 id="2-2-数据库">2.2 数据库</h2>
+
+<pre><code>$ sqlite3 demo.db
+SQLite version 3.24.0 2018-06-04 14:10:15
+Enter &quot;.help&quot; for usage hints.
+sqlite&gt;
+</code></pre>
+
+<p>这样子会在当前目录创建<code>demo.db</code>文件，后续在命令行里建表、插入等操作会记录到该文件，也可以先直接输入<code>sqlite3</code>操作会记录到内存中，然后调用<code>.save</code>方法保存到磁盘。</p>
+
+<pre><code>$ sqlite3
+SQLite version 3.24.0 2018-06-04 14:10:15
+Enter &quot;.help&quot; for usage hints.
+Connected to a transient in-memory database.
+sqlite&gt; CREATE TABLE IF NOT EXISTS article (
+   ...&gt;     article_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   ...&gt;     title text NOT NULL,
+   ...&gt;     content text,
+   ...&gt;     status INTEGER NOT NULL DEFAULT 1
+   ...&gt; );
+sqlite&gt; .save demo.db
+</code></pre>
+
+<p>通常情况下一个<code>database</code>一个文件，有时候也会碰到跨库查询的需求。我们创建一个新的数据库</p>
+
+<pre><code>$ sqlite3 test.db
+SQLite version 3.24.0 2018-06-04 14:10:15
+Enter &quot;.help&quot; for usage hints.
+sqlite&gt; create table comment(artice_id integer, content text);
+sqlite&gt; .exit
+</code></pre>
+
+<p>然后使用<code>attach</code>语句将其他数据库附加到当前数据库连接。将两个数据库加载到同一个程序中，这样子建表可以指定<code>schema_name</code>，也可以进行关联查询。</p>
+
+<p>attach语法：<code>ATTACH DATABASE file_name AS database_name;</code></p>
+
+<pre><code>$ sqlite3
+SQLite version 3.24.0 2018-06-04 14:10:15
+Enter &quot;.help&quot; for usage hints.
+Connected to a transient in-memory database.
+Use &quot;.open FILENAME&quot; to reopen on a persistent database.
+sqlite&gt; attach &quot;./test.db&quot; as test;
+sqlite&gt; attach &quot;./demo.db&quot; as demo;
+sqlite&gt; .database
+main:
+test: /Users/peng/workspace/demo/./test.db
+demo: /Users/peng/workspace/demo/./demo.db
+</code></pre>
+
+<h2 id="2-3-数据类型">2.3 数据类型</h2>
+
+<p>SQLite中数据库类型比较简单，只有以下几种：</p>
+
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>NULL</td>
+<td>值是一个 NULL 值。</td>
+</tr>
+
+<tr>
+<td>INTEGER</td>
+<td>值是一个带符号的整数，根据值的大小存储在 1、2、3、4、6 或 8 字节中。</td>
+</tr>
+
+<tr>
+<td>REAL</td>
+<td>值是一个浮点值，存储为 8 字节的 IEEE 浮点数字。</td>
+</tr>
+
+<tr>
+<td>TEXT</td>
+<td>值是一个文本字符串，使用数据库编码（UTF-8、UTF-16BE 或 UTF-16LE）存储。</td>
+</tr>
+
+<tr>
+<td>BLOB</td>
+<td>值是一个 blob 数据，完全根据它的输入存储。</td>
+</tr>
+</tbody>
+</table>
+
+<p>根据值的格式，SQLite根据以下规则确定其数据类型：</p>
+
+<ul>
+<li>如果文字没有封闭引号和小数点或指数，则SQLite会分配INTEGER存储类。</li>
+<li>如果文字由单引号或双引号括起，则SQLite会分配TEXT存储类。</li>
+<li>如果文字没有引号，小数点也没有指数，SQLite会分配REAL存储类。</li>
+<li>如果文字是NULL而没有引号，则它分配了NULL存储类。</li>
+<li>如果文字具有X&rsquo;ABCD&rsquo;或x&rsquo;abcd&rsquo;，则SQLite分配BLOB存储类。</li>
+</ul>
+
+<p>关于数据类型的获取可根据<code>typeof()</code>函数来获取。</p>
+
+<pre><code>sqlite&gt; insert into demo.article (title, content) values (&quot;Title&quot;, 123);
+sqlite&gt; select typeof(article_id), typeof(title), typeof(content), typeof(status) from article;
+integer|text|text|integer
+sqlite&gt; create table demo.category(category_id, category_name);
+sqlite&gt; insert into demo.category values (1, 1.0);
+sqlite&gt; insert into demo.category values ('A', NULL);
+sqlite&gt; select typeof(category_id), typeof(category_name) from demo.category;
+integer|real
+text|null
+</code></pre>
+
+<h2 id="2-3-日期类型及函数">2.3 日期类型及函数</h2>
+
+<p>接上一节可以看到没有日期相关类型。<code>SQLite</code>不支持内置的日期和时间存储类。 但是可以使用<code>TEXT</code>，<code>INT</code>或<code>REAL</code>来存储日期和时间值。</p>
+
+<p><strong>1. 使用TEXT存储SQLite日期和时间</strong></p>
+
+<p>如果使用TEXT存储类来存储日期和时间值，则需要使用ISO8601字符串格式，如：<code>YYYY-MM-DD HH:MM:SS.SSS</code>。然后使用<code>DATETIME</code>函数来获取当前时间。</p>
+
+<pre><code>DATETIME('now');
+DATETIME('now','localtime');
+</code></pre>
+
+<p><strong>2. 使用INTEGER存储SQLite日期和时间</strong></p>
+
+<p>我们通常使用INTEGER来存储UNIX时间，从1970-01-01 00:00:00到当前的秒数。可以使用<code>strftime('%s', 'now')</code>,然后读取格式化使用：<code>datetime(d1, 'unixepoch')</code></p>
+
+<p><strong>3. 使用REAL存储SQLite日期和时间</strong></p>
+
+<p>也可以使用REAL存储类将日期和/或时间值存储为Julian日数，这是自公元前4714年11月24日格林威治中午以来的天数。 基于公历<code>Gregorian</code>利历。</p>
+
+<p>存储：<code>julianday('now')</code>，读取<code>date(d1)</code>, <code>time(d1)</code></p>
+
+<pre><code>$ sqlite3
+SQLite version 3.24.0 2018-06-04 14:10:15
+Enter &quot;.help&quot; for usage hints.
+Connected to a transient in-memory database.
+Use &quot;.open FILENAME&quot; to reopen on a persistent database.
+sqlite&gt; create table time_test(text_time text, int_time integer, real_time real);
+sqlite&gt; insert into time_test values (datetime('now', 'localtime'), strftime('%s', 'now'), julianday('now'));
+sqlite&gt; .header on
+sqlite&gt; .mode column
+sqlite&gt; select * from time_test;
+text_time            int_time    real_time
+-------------------  ----------  ----------------
+2019-04-04 23:32:48  1554391968  2458578.14778737
+sqlite&gt; select text_time, datetime(int_time, 'unixepoch'),date(real_time), time(real_time) from time_test;
+text_time            datetime(int_time, 'unixepoch')  date(real_time)  time(real_time)
+-------------------  -------------------------------  ---------------  ---------------
+2019-04-04 23:32:48  2019-04-04 15:32:48              2019-04-04       15:32:48
+</code></pre>
+
+<p><code>SQLite</code>中关于时间的函数主要有5个：</p>
+
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>定义</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>DATE</td>
+<td>date(timestring, modifier, modifier,&hellip;)</td>
+<td>以 YYYY-MM-DD 格式返回日期。</td>
+</tr>
+
+<tr>
+<td>TIME</td>
+<td>time(timestring, modifier, modifier, &hellip;)</td>
+<td>以 HH:MM:SS 格式返回时间。</td>
+</tr>
+
+<tr>
+<td>DATETIME</td>
+<td>datetime(timestring, modifier, modifier, &hellip;)</td>
+<td>以 YYYY-MM-DD HH:MM:SS 格式返回。</td>
+</tr>
+
+<tr>
+<td>JULIANDAY</td>
+<td>julianday(timestring, modifier, modifier, &hellip;)</td>
+<td>这将返回从格林尼治时间的公元前 4714 年 11 月 24 日正午算起的天数。</td>
+</tr>
+
+<tr>
+<td>STRFTIME</td>
+<td>strftime(format_string, timestring, modifier, modifier, &hellip;)</td>
+<td>根据指定的格式字符串格式化日期值。</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>DATE函数</strong></p>
+
+<p>在此语法中，每个修饰符用于将变换应用于其左侧的时间值。 修改器从左到右应用，顺序很重要。例如，以下语句返回该月的最后一天：</p>
+
+<pre><code>SELECT DATE('now', 'start of month', '+1 month', '-1 day');
+</code></pre>
+
+<p>在这个例子中：<code>now</code>是一个指定当前日期的时间字符串。<code>start of month</code>,<code>+1 month</code>, <code>-1 day</code>是修饰符。执行步骤如下：</p>
+
+<ul>
+<li>首先，将月份开始应用于由现在时间字符串指定的当前日期，因此结果是当前月份的第一天。</li>
+<li>其次，+1个月适用于当月的第一天，导致下个月的第一天。</li>
+<li>第三，-1天应用于下个月的第一天，这导致前一个月的最后一天。</li>
+</ul>
+
+<p><code>timestring</code>支持常用时间格式（用<code>now</code>表示当前时间），<code>modifier</code>格式支持：</p>
+
+<table>
+<thead>
+<tr>
+<th>序号</th>
+<th>修饰符</th>
+<th>描述</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>1</td>
+<td>N days</td>
+<td><code>± N days</code> 加减N天</td>
+</tr>
+
+<tr>
+<td>2</td>
+<td>N hours</td>
+<td>加减N小时</td>
+</tr>
+
+<tr>
+<td>3</td>
+<td>N minutes</td>
+<td>加减N分钟</td>
+</tr>
+
+<tr>
+<td>4</td>
+<td>N.N seconds</td>
+<td>加减N秒</td>
+</tr>
+
+<tr>
+<td>5</td>
+<td>N months</td>
+<td>加减N月</td>
+</tr>
+
+<tr>
+<td>6</td>
+<td>N years</td>
+<td>加减N年</td>
+</tr>
+
+<tr>
+<td>7</td>
+<td>start of month</td>
+<td>月初</td>
+</tr>
+
+<tr>
+<td>8</td>
+<td>start of year</td>
+<td>年初</td>
+</tr>
+
+<tr>
+<td>9</td>
+<td>start of day</td>
+<td>当天0点</td>
+</tr>
+
+<tr>
+<td>10</td>
+<td>weekday N</td>
+<td>将日期提前到工作日编号为N的下一个日期</td>
+</tr>
+
+<tr>
+<td>11</td>
+<td>unixepoch</td>
+<td>Unix时间</td>
+</tr>
+
+<tr>
+<td>12</td>
+<td>localtime</td>
+<td>本地时间</td>
+</tr>
+
+<tr>
+<td>13</td>
+<td>utc</td>
+<td>UTC时间</td>
+</tr>
+</tbody>
+</table>
+
+<p>如：</p>
+
+<pre><code>sqlite&gt; select date(&quot;2020-01-01&quot;, &quot;-1 day&quot;) as day;
+day
+----------
+2019-12-31
+</code></pre>
+
+<p>理解DATE函数后，后面的函数就比较好理解了。</p>
+
+<p><strong>TIME函数示例</strong></p>
+
+<pre><code>sqlite&gt; select time(&quot;12:00:00&quot;, '-2 hours');
+time(&quot;12:00:00&quot;, '-2 hours')
+----------------------------
+10:00:00
+</code></pre>
+
+<p><strong>DATETIME函数示例</strong></p>
+
+<pre><code>sqlite&gt; SELECT datetime('now','localtime');
+datetime('now','localtime')
+---------------------------
+2019-04-05 00:07:51
+</code></pre>
+
+<p><strong>STRFTIME函数</strong></p>
+
+<pre><code>strftime(format_string, timestring, modifier, modifier, ...)
+</code></pre>
+
+<p>格式化时间，和前面几个函数可以相互转换：</p>
+
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>等价于 strftime()</th>
+<th>示例</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>date(&hellip;)</td>
+<td>strftime(&lsquo;%Y-%m-%d&rsquo;, &hellip;)</td>
+<td>date(&lsquo;now&rsquo;) = strftime(&lsquo;%Y-%m-%d&rsquo;, &lsquo;now&rsquo;)</td>
+</tr>
+
+<tr>
+<td>time(&hellip;)</td>
+<td>strftime(&lsquo;%H:%M:%S&rsquo;, &hellip;)</td>
+<td></td>
+</tr>
+
+<tr>
+<td>datetime(&hellip;)</td>
+<td>strftime(&lsquo;%Y-%m-%d %H:%M:%S&rsquo;, &hellip;)</td>
+<td>select strftime(&lsquo;%Y-%m-%d %H:%M:%S&rsquo;, &lsquo;now&rsquo;, &ldquo;start of year&rdquo;);</td>
+</tr>
+
+<tr>
+<td>julianday(&hellip;)</td>
+<td>strftime(&lsquo;%J&rsquo;, &hellip;)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<p><code>format_string</code>的支持格式如下：</p>
+
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>描述</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>%d</td>
+<td>一月中的第几天，01-31</td>
+</tr>
+
+<tr>
+<td>%f</td>
+<td>带小数部分的秒，SS.SSS</td>
+</tr>
+
+<tr>
+<td>%H</td>
+<td>小时，00-23</td>
+</tr>
+
+<tr>
+<td>%j</td>
+<td>一年中的第几天，001-366</td>
+</tr>
+
+<tr>
+<td>%J</td>
+<td>儒略日数，DDDD.DDDD</td>
+</tr>
+
+<tr>
+<td>%m</td>
+<td>月，00-12</td>
+</tr>
+
+<tr>
+<td>%M</td>
+<td>分，00-59</td>
+</tr>
+
+<tr>
+<td>%s</td>
+<td>从 1970-01-01 算起的秒数</td>
+</tr>
+
+<tr>
+<td>%S</td>
+<td>秒，00-59</td>
+</tr>
+
+<tr>
+<td>%w</td>
+<td>一周中的第几天，0-6 (0 is Sunday)</td>
+</tr>
+
+<tr>
+<td>%W</td>
+<td>一年中的第几周，01-53</td>
+</tr>
+
+<tr>
+<td>%Y</td>
+<td>年，YYYY</td>
+</tr>
+
+<tr>
+<td>%%</td>
+<td>% symbol</td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="2-4-数据约束">2.4 数据约束</h2>
+
+<p>前面<code>PRIMARY KEY</code>是定义在字段后面在，如果有多个主键会有问题，所以<code>PRIMARY KEY</code>也可以定义在<code>table_constraint</code>中。如：</p>
+
+<pre><code>create table article_control(
+    article_id integer, 
+    category_id integer, 
+    stat integer,
+    primary key(article_id, category_id)
+);
+</code></pre>
+
+<p><strong>唯一建</strong></p>
+
+<p>和主键定义方式一样：</p>
+
+<pre><code>sqlite&gt; create table user_info(
+    id integer PRIMARY KEY AUTOINCREMENT, 
+    mobile text not null unique
+);
+sqlite&gt; drop table user_info;
+sqlite&gt; create table user_info(
+    id integer PRIMARY KEY AUTOINCREMENT, 
+    mobile text not null,
+    email text not null,
+    unique(mobile, email)
+);
+</code></pre>
+
+<p>和<code>MYSQL</code>一样，可以<code>DEFAULT NULL UNIQUE</code>.</p>
+
+<p><strong>外键</strong></p>
+
+<pre><code>CREATE TABLE IF NOT EXISTS supplier_groups (
+ group_id integer PRIMARY KEY,
+ group_name text NOT NULL
+);
+ 
+CREATE TABLE suppliers (
+ supplier_id integer PRIMARY KEY,
+ supplier_name text NOT NULL,
+ group_id integer NOT NULL,
+        FOREIGN KEY (group_id) REFERENCES supplier_groups(group_id)
+);
+
+</code></pre>
+
+<h2 id="2-5-创建索引">2.5 创建索引</h2>
+
+<pre><code>-- 创建索引
+CREATE [UNIQUE] INDEX index_name ON table_name(indexed_column);
+
+-- 删除索引
+DROP INDEX [IF EXISTS] index_name;
+</code></pre>
+
+<p>同样可以通过<code>explain</code>字段来查看索引使用情况。</p>
+
+<pre><code>sqlite&gt; explain query plan select * from user_info where email = 'xxx';
+QUERY PLAN
+`--SCAN TABLE user_info
+sqlite&gt; explain query plan select * from user_info where mobile = 'xxx';
+QUERY PLAN
+`--SEARCH TABLE user_info USING INDEX idx_mobile (mobile=?)
+</code></pre>
+
+<h2 id="2-6-修改操作">2.6 修改操作</h2>
+
+<pre><code>-- 修改表名
+ALTER TABLE existing_table RENAME TO new_table;
+
+-- 增加字段(不支持删除字段)
+ALTER TABLE table ADD COLUMN column_definition [after column_name];
+
+-- 删除表
+DROP TABLE [IF EXISTS] [schema_name.]table_name;
+</code></pre>
+
+<h2 id="2-7-视图">2.7 视图</h2>
+
+<pre><code>CREATE [TEMP] VIEW [IF NOT EXISTS] view_name(column-name-list)
+AS 
+   select-statement;
+
+DROP VIEW [IF EXISTS] view_name;
+</code></pre>
+
+<p>SQLite也支持触发器、<code>CHECK Constraint</code>，不常用就不一一介绍了。到这里SQLite的基本建表相关的操作就差不多了。表建好后数据上的增删查改和Mysql基本一致，所以后续会介绍的相对精简一点。</p>
+
+<h1 id="三-数据读取">三、数据读取</h1>
+
+<p><img src="../../static/uploads/sqlite-select-stmt.gif" alt="" /></p>
+
+<h1 id="四-命令行">四、命令行</h1>
+
+<p>SQLite项目提供了一个名为sqlite3（或Windows上的sqlite3.exe）的简单命令行工具，允许使用SQL语句和命令与SQLite数据库进行交互。默认情况下，SQLite会话使用内存数据库，因此会话结束时所有更改都将消失。</p>
+
+<p>要打开或者创建一个数据库文件，可以使用<code>.open FILENAME</code> 或者使用<code>sqlite3 FILENAME</code>(不存在时会自动创建FILENAME)。要显示所有可用命令及其用途，请使用.help命令，如下所示：</p>
+
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>.backup ?DB? FILE</td>
+<td>备份 DB 数据库（默认是 &ldquo;main&rdquo;）到 FILE 文件。</td>
+</tr>
+
+<tr>
+<td>.bail ON|OFF</td>
+<td>发生错误后停止。默认为 OFF。</td>
+</tr>
+
+<tr>
+<td>.databases</td>
+<td>列出数据库的名称及其所依附的文件。</td>
+</tr>
+
+<tr>
+<td>.dump ?TABLE?</td>
+<td>以 SQL 文本格式转储数据库。如果指定了 TABLE 表，则只转储匹配 LIKE 模式的 TABLE 表。</td>
+</tr>
+
+<tr>
+<td>.echo ON|OFF</td>
+<td>开启或关闭 echo 命令。</td>
+</tr>
+
+<tr>
+<td>.exit</td>
+<td>退出 SQLite 提示符。</td>
+</tr>
+
+<tr>
+<td>.explain ON|OFF</td>
+<td>开启或关闭适合于 EXPLAIN 的输出模式。如果没有带参数，则为 EXPLAIN on，及开启 EXPLAIN。</td>
+</tr>
+
+<tr>
+<td>.header(s) ON|OFF</td>
+<td>开启或关闭头部显示。</td>
+</tr>
+
+<tr>
+<td>.help</td>
+<td>显示消息。</td>
+</tr>
+
+<tr>
+<td>.import FILE TABLE</td>
+<td>导入来自 FILE 文件的数据到 TABLE 表中。</td>
+</tr>
+
+<tr>
+<td>.indices ?TABLE?</td>
+<td>显示所有索引的名称。如果指定了 TABLE 表，则只显示匹配 LIKE 模式的 TABLE 表的索引。</td>
+</tr>
+
+<tr>
+<td>.load FILE ?ENTRY?</td>
+<td>加载一个扩展库。</td>
+</tr>
+
+<tr>
+<td>.log FILE|off</td>
+<td>开启或关闭日志。FILE 文件可以是 stderr（标准错误）/stdout（标准输出）。</td>
+</tr>
+
+<tr>
+<td>.mode MODE</td>
+<td>设置输出模式，MODE 可以是下列之一<BR>- csv 逗号分隔的值<BR>- column 左对齐的列<BR>- html HTML 的 <code>&lt;table&gt;</code> 代码<BR>- insert TABLE 表的 SQL 插入（insert）语句<BR>- line 每行一个值<BR>- list 由 .separator 字符串分隔的值<BR>- tabs 由 Tab 分隔的值<BR>- tcl TCL 列表元素</td>
+</tr>
+
+<tr>
+<td>.nullvalue STRING</td>
+<td>在 NULL 值的地方输出 STRING 字符串。</td>
+</tr>
+
+<tr>
+<td>.output FILENAME</td>
+<td>发送输出到 FILENAME 文件。</td>
+</tr>
+
+<tr>
+<td>.output stdout</td>
+<td>发送输出到屏幕。</td>
+</tr>
+
+<tr>
+<td>.print STRING&hellip;</td>
+<td>逐字地输出 STRING 字符串。</td>
+</tr>
+
+<tr>
+<td>.prompt MAIN CONTINUE</td>
+<td>替换标准提示符。</td>
+</tr>
+
+<tr>
+<td>.quit</td>
+<td>退出 SQLite 提示符。</td>
+</tr>
+
+<tr>
+<td>.read FILENAME</td>
+<td>执行 FILENAME 文件中的 SQL。</td>
+</tr>
+
+<tr>
+<td>.schema ?TABLE?</td>
+<td>显示 CREATE 语句。如果指定了 TABLE 表，则只显示匹配 LIKE 模式的 TABLE 表。</td>
+</tr>
+
+<tr>
+<td>.separator STRING</td>
+<td>改变输出模式和 .import 所使用的分隔符。</td>
+</tr>
+
+<tr>
+<td>.show</td>
+<td>显示各种设置的当前值。</td>
+</tr>
+
+<tr>
+<td>.stats ON|OFF</td>
+<td>开启或关闭统计。</td>
+</tr>
+
+<tr>
+<td>.tables ?PATTERN?</td>
+<td>列出匹配 LIKE 模式的表的名称。</td>
+</tr>
+
+<tr>
+<td>.timeout MS</td>
+<td>尝试打开锁定的表 MS 毫秒。</td>
+</tr>
+
+<tr>
+<td>.width NUM NUM</td>
+<td>为 &ldquo;column&rdquo; 模式设置列宽度。</td>
+</tr>
+
+<tr>
+<td>.timer ON|OFF</td>
+<td>开启或关闭 CPU 定时器。</td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="4-1-调整显示">4.1 调整显示</h2>
+
+<p>按照不同的模式进行SQL查询后的结果展示。</p>
+
+<pre><code>sqlite&gt; .mode
+current output mode: list
+sqlite&gt; .header on
+sqlite&gt; .mode column
+sqlite&gt; select * from test;
+id
+----------
+1
+2
+sqlite&gt; .mode insert
+sqlite&gt; select * from test;
+INSERT INTO &quot;table&quot;(id) VALUES(1);
+INSERT INTO &quot;table&quot;(id) VALUES(2);
+</code></pre>
+
+<h2 id="4-2-查看数据库及表">4.2 查看数据库及表</h2>
+
+<pre><code>-- 显示数据库
+sqlite&gt; .database
+main: /Users/peng/workspace/demo/test.db
+
+-- 显示表名
+sqlite&gt; .table
+comment
+
+-- 显示DDL
+sqlite&gt; .schema
+CREATE TABLE comment(article_id integer, content text);
+
+-- 显示索引
+sqlite&gt; create index idx_article_id on comment(article_id);
+sqlite&gt; .index
+idx_article_id
+</code></pre>
+
+<h2 id="4-3-数据导出">4.3 数据导出</h2>
+
+<p><strong>通过.output将输出信息写到文件中。</strong></p>
+
+<pre><code>-- 查询结果写到test.txt中
+sqlite&gt; .output &quot;./test.txt&quot;
+sqlite&gt; select * from comment;
+
+-- 回复在标准输出打印
+sqlite&gt; .output stdout
+sqlite&gt; select * from comment;
+1|Test
+</code></pre>
+
+<p>要将数据库转储到文件中，可以使用<code>.dump</code>命令。 <code>.dump</code>命令将<code>SQLite</code>数据库的整个结构和数据转换为单个文本文件。默认情况下直接在标准输出显示，需要配合上面的<code>.output</code>指定输出到文件。</p>
+
+<h2 id="4-4-导入csv格式">4.4 导入CSV格式</h2>
+
+<p>先将模式<code>.mode</code>设置为<code>csv</code>以指示命令行shell程序将输入文件解释为CSV文件，然后通过<code>.import</code>导入。</p>
+
+<pre><code>sqlite&gt; .mode csv
+-- 将csv文件导入到test表
+sqlite&gt; .import &quot;./test.csv&quot; test
+</code></pre>
+
+<h2 id="4-5-导出csv格式">4.5 导出CSV格式</h2>
+
+<pre><code>sqlite&gt; .headers on
+sqlite&gt; .mode csv
+sqlite&gt; .output data.csv
+sqlite&gt; select * from test;
+sqlite&gt; .exit
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2019-04.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2019-04.html">2019-04-06 22:22</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/sqlite.html">SQLite</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/meitu-k8s-exp.html">历时3年，美图全面容器化踩过的坑</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/mysql-data-free.html">Mysql存储空间释放</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\sqlite\SQLite数据库入门笔记.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\sqlite\SQLite数据库入门笔记.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

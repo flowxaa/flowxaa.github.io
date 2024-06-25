@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python常用库 ( 3 ) - 文件模块</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python常用库 ( 3 ) - 文件模块</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-文件路径相关-os-path">一、文件路径相关(os.path)</h1>
+
+<p>路径相关的操作主要在<code>os.path</code>库。</p>
+
+<h2 id="1-1-判断文件-目录是否存在">1.1 判断文件、目录是否存在</h2>
+
+<p><strong>1. os.path.exists:</strong> 判断文件/目录是否存在</p>
+
+<pre><code>&gt;&gt;&gt; import os
+&gt;&gt;&gt; print os.path.exists.__doc__
+Test whether a path exists.  Returns False for broken symbolic links
+
+# build目录
+&gt;&gt;&gt; os.path.exists(&quot;build&quot;)
+True
+# 1.txt文件
+&gt;&gt;&gt; os.path.exists(&quot;1.txt&quot;)
+True
+</code></pre>
+
+<p><strong>2. os.path.isdir:</strong> 判断是否是目录</p>
+
+<pre><code>&gt;&gt;&gt; os.path.isdir(&quot;build&quot;)
+True
+&gt;&gt;&gt; os.path.isdir(&quot;1.txt&quot;)
+False
+</code></pre>
+
+<p><strong>3. os.path.isfile:</strong> 判断是否是文件</p>
+
+<pre><code>&gt;&gt;&gt; os.path.isfile(&quot;build&quot;)
+False
+&gt;&gt;&gt; os.path.isfile(&quot;1.txt&quot;)
+True
+</code></pre>
+
+<p><strong>4. os.path.islink:</strong> 判断是否是软连</p>
+
+<blockquote>
+<p>$ ln -s 1.txt v.txt</p>
+</blockquote>
+
+<pre><code>&gt;&gt;&gt; os.path.islink(&quot;1.txt&quot;)
+False
+&gt;&gt;&gt; os.path.islink(&quot;v.txt&quot;)
+True
+</code></pre>
+
+<h2 id="1-2-获取路径-目录-文件名">1.2 获取路径、目录、文件名</h2>
+
+<p><strong>1. os.path.abspath:</strong> 获取所在文件的绝对路径</p>
+
+<pre><code>&gt;&gt;&gt; os.path.abspath(&quot;1.txt&quot;)
+'/Users/peng/workspace/python/demo/1.txt'
+</code></pre>
+
+<p><strong>2. os.path.dirname:</strong> 获取目录</p>
+
+<pre><code>&gt;&gt;&gt; os.path.dirname(os.path.abspath(&quot;1.txt&quot;))
+'/Users/peng/workspace/python/demo'
+</code></pre>
+
+<p><strong>3. os.path.basename:</strong> 获取文件名</p>
+
+<pre><code>&gt;&gt;&gt; os.path.basename(os.path.abspath(&quot;1.txt&quot;))
+'1.txt'
+</code></pre>
+
+<p><strong>4. os.path.isabs:</strong> 是否是绝对路径</p>
+
+<pre><code>&gt;&gt;&gt; os.path.isabs(&quot;1.txt&quot;)
+False
+&gt;&gt;&gt; os.path.isabs(&quot;/Users/peng/workspace/python/demo/1.txt&quot;)
+True
+</code></pre>
+
+<p><strong>5. os.path.walk():</strong> 遍历路径</p>
+
+<h2 id="1-3-路径处理">1.3 路径处理</h2>
+
+<p><strong>1. os.path.split:</strong> 切分路径</p>
+
+<pre><code>&gt;&gt;&gt; os.path.split(os.path.abspath(&quot;1.txt&quot;))
+('/Users/peng/workspace/python/demo', '1.txt')
+</code></pre>
+
+<p><strong>2. os.path.splitext:</strong></p>
+
+<pre><code>&gt;&gt;&gt; os.path.splitext(os.path.abspath(&quot;1.txt&quot;))
+('/Users/peng/workspace/python/demo/1', '.txt')
+</code></pre>
+
+<p><strong>3. os.path.join:</strong> 合并路径</p>
+
+<pre><code>&gt;&gt;&gt; os.path.join(&quot;/Users/peng/workspace/python/demo&quot;, &quot;1.txt&quot;)
+'/Users/peng/workspace/python/demo/1.txt'
+</code></pre>
+
+<h1 id="二-操作文件目录-os">二、操作文件目录(os)</h1>
+
+<p>本章节主要描述文件的创建、移动、拷贝、删除等操作。</p>
+
+<h2 id="2-1-添加-删除目录">2.1 添加/删除目录</h2>
+
+<p><strong>1. 创建目录</strong></p>
+
+<ul>
+<li>os.mkdir: 创建目录</li>
+<li>os.makedirs: 递归创建目录</li>
+</ul>
+
+<pre><code>&gt;&gt;&gt; print os.mkdir.__doc__
+mkdir(path [, mode=0777])
+
+&gt;&gt;&gt; os.mkdir(&quot;test&quot;)
+# 递归创建时会抛异常
+&gt;&gt;&gt; os.mkdir(&quot;testa/testb&quot;)
+Traceback (most recent call last):
+  File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;
+OSError: [Errno 2] No such file or directory: 
+</code></pre>
+
+<p><strong>递归创建目录</strong></p>
+
+<pre><code>'testa/testb'
+# 递归创建目录
+&gt;&gt;&gt; os.makedirs(&quot;testa/testb&quot;)
+</code></pre>
+
+<p><strong>2. 删除目录</strong></p>
+
+<ul>
+<li>os.rmdir: 删除单个目录</li>
+<li>os.removedirs: 递归删除目录</li>
+<li>os.remove: 删除文件</li>
+</ul>
+
+<pre><code>$ touch 1.md
+&gt;&gt;&gt; os.rmdir(&quot;test&quot;)
+Traceback (most recent call last):
+  File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;
+OSError: [Errno 66] Directory not empty: 'test'
+
+$ rm 1.md
+&gt;&gt;&gt; os.rmdir(&quot;test&quot;)
+
+# 递归删除目录
+&gt;&gt;&gt; os.removedirs(&quot;testa/testb&quot;)
+
+# 删除文件
+&gt;&gt;&gt; os.remove(&quot;1.md&quot;)
+&gt;&gt;&gt; os.remove(&quot;1.md&quot;)
+Traceback (most recent call last):
+  File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;
+OSError: [Errno 2] No such file or directory: '1.md'
+</code></pre>
+
+<h2 id="2-2-获取目录">2.2 获取目录</h2>
+
+<p><strong>1. os.listdir:</strong> 列出目录下的文件</p>
+
+<pre><code>&gt;&gt;&gt; os.listdir(&quot;./test&quot;)
+['1.md', 'folder']
+</code></pre>
+
+<p><strong>2. os.getcwd:</strong> 获取当前工作目录</p>
+
+<ul>
+<li>os.getcwd: 获取当前工作目录</li>
+<li>os.chdir：切换工作目录</li>
+</ul>
+
+<pre><code>&gt;&gt;&gt; print os.getcwd.__doc__
+getcwd() -&gt; path
+
+&gt;&gt;&gt; os.getcwd()
+'/Users/peng/workspace/python/demo'
+
+&gt;&gt;&gt; os.chdir(&quot;./test&quot;)
+&gt;&gt;&gt; print os.getcwd()
+/Users/peng/workspace/python/demo/test
+</code></pre>
+
+<h2 id="2-3-重命名">2.3 重命名</h2>
+
+<p><strong>1. os.rename:</strong> 获取当前工作目录</p>
+
+<pre><code>&gt;&gt;&gt; print os.rename.__doc__
+rename(old, new)
+
+Rename a file or directory.
+
+&gt;&gt;&gt; os.rename(&quot;1.md&quot;, &quot;2.md&quot;)
+&gt;&gt;&gt; os.rename(&quot;1.md&quot;, &quot;2.md&quot;)
+Traceback (most recent call last):
+  File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;
+OSError: [Errno 2] No such file or directory
+</code></pre>
+
+<h1 id="三-读写文件操作">三、读写文件操作</h1>
+
+<p><code>python</code>内置文件相关操作，本章节主要描述对文件的读写操作。</p>
+
+<h2 id="3-1-操作流程">3.1 操作流程</h2>
+
+<p>操作文件分为3个步骤：1. 打开文件 - 2. 读写文件 - 3. 关闭文件句柄</p>
+
+<h3 id="3-1-1-打开文件">3.1.1 打开文件</h3>
+
+<p>调用open()函数打开文件并返回一个file对象</p>
+
+<pre><code>&gt;&gt;&gt; print open.__doc__
+open(name[, mode[, buffering]]) -&gt; file object
+
+Open a file using the file() type, returns a file object.  This is the
+preferred way to open a file.  See file.__doc__ for further information
+
+# Py3中第三个参数encoding可以指定文件编码。
+f = open(&quot;1.txt&quot;, &quot;r&quot;)
+
+# 打印文件名
+&gt;&gt;&gt; print(f.name)
+1.txt
+# 打印文件对象是否已经关闭
+&gt;&gt;&gt; print(f.closed)
+False
+# 打印打开模式
+&gt;&gt;&gt; print(f.mode)
+r
+</code></pre>
+
+<p><strong>常用模式说明</strong></p>
+
+<p><img src="../../static/uploads/pythom-mode.png" alt="" /></p>
+
+<table>
+<thead>
+<tr>
+<th>mode</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>b</td>
+<td>二进制模式。</td>
+</tr>
+
+<tr>
+<td>+</td>
+<td>打开一个文件进行更新(可读可写)。</td>
+</tr>
+
+<tr>
+<td>r</td>
+<td>以只读方式打开文件。文件的指针将会放在文件的开头。这是默认模式。</td>
+</tr>
+
+<tr>
+<td>r+</td>
+<td>打开一个文件用于读写。文件指针将会放在文件的开头。</td>
+</tr>
+
+<tr>
+<td>w</td>
+<td>打开一个文件只用于写入。如果该文件已存在则打开文件，并从开头开始编辑，即原有内容会被删除。如果该文件不存在，创建新文件。</td>
+</tr>
+
+<tr>
+<td>w+</td>
+<td>打开一个文件用于读写。如果该文件已存在则打开文件，并从开头开始编辑，即原有内容会被删除。如果该文件不存在，创建新文件。</td>
+</tr>
+
+<tr>
+<td>a</td>
+<td>打开一个文件用于追加。如果该文件已存在，文件指针将会放在文件的结尾。也就是说，新的内容将会被写入到已有内容之后。如果该文件不存在，创建新文件进行写入。</td>
+</tr>
+
+<tr>
+<td>a+</td>
+<td>打开一个文件用于读写。如果该文件已存在，文件指针将会放在文件的结尾。文件打开时会是追加模式。如果该文件不存在，创建新文件用于读写。</td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="3-1-2-读写文件">3.1.2 读写文件</h3>
+
+<p>调用read()或write()等方法读写文件</p>
+
+<pre><code>&gt;&gt;&gt; print file.read.__doc__
+read([size]) -&gt; read at most size bytes, returned as a string.
+
+If the size argument is negative or omitted, read until EOF is reached.
+Notice that when in non-blocking mode, less data than what was requested
+may be returned, even if no size parameter was given.
+
+f.read()
+</code></pre>
+
+<p><code>read</code>函数接收一个读取的字节数，如果不指定默认读取到结束符为止。</p>
+
+<h3 id="3-1-3-关闭句柄">3.1.3 关闭句柄</h3>
+
+<pre><code>f.close()
+</code></pre>
+
+<p>操作使用完后需要手动调用<code>close()</code>方法，<code>Python</code>里引入<code>with</code>语句可以在<code>with</code>代码块作用域结束后自动关闭文件，如：</p>
+
+<pre><code>with open(&quot;1.txt&quot;, &quot;r&quot;) as f:
+    t = f.read()
+    print(t)
+
+print(f.closed)
+
+# Output:
+The Zen of Python, by Tim Peters
+
+Beautiful is better than ugly.
+Explicit is better than implicit.
+Simple is better than complex.
+...
+Namespaces are one honking great idea -- let's do more of those!
+True
+</code></pre>
+
+<h2 id="3-2-文件读取">3.2 文件读取</h2>
+
+<p>常用的读取函数有：</p>
+
+<ul>
+<li><code>read()</code> 默认读取整个文本内容</li>
+<li><code>readline()</code> 读取一行内容</li>
+<li><code>readlines()</code> 读取整个文件行返回到<code>list</code>中，相当于调用<code>readline()</code>直到<code>EOF</code>，并将结果放在<code>list</code>中。</li>
+</ul>
+
+<p><strong>调用readline读取</strong></p>
+
+<p>通过<code>readlines</code>可以看到每一行即便看起来是空白行，其实也是有空白字符<code>\n</code>，所以可以用<code>if not t</code>来判断是否读取到文件尾。</p>
+
+<pre><code>f = open(&quot;1.txt&quot;, &quot;r&quot;)
+while True:
+    t = f.readline()
+    print(t)
+    if not t:
+        break
+
+f.close()
+
+# Output:
+The Zen of Python, by Tim Peters
+...
+</code></pre>
+
+<p><strong>调用readlines读取</strong></p>
+
+<p>可方便对读取到的每行内容做数据处理，省去读取整个文本后在切割的过程。可以看到输出的行尾都有换行符。可以批量去除：<code>[l.strip() for l in t]</code></p>
+
+<pre><code>import json
+
+f = open(&quot;1.txt&quot;, &quot;r&quot;)
+t = f.readlines()
+print(json.dumps(t))
+
+
+f.close()
+
+# output:
+[
+    &quot;The Zen of Python, by Tim Peters\n&quot;,
+    &quot;\n&quot;,
+    &quot;Beautiful is better than ugly.\n&quot;,
+    &quot;Explicit is better than implicit.\n&quot;,
+    &quot;Simple is better than complex.\n&quot;
+]
+</code></pre>
+
+<h2 id="3-3-文件写入">3.3 文件写入</h2>
+
+<p>写入主要有<code>write()</code>和<code>writelines()</code>方法。熟悉前面文件的操作流程和打开方式后，写入就比较好理解了。常用的写入模式（<code>w</code>、<code>a+</code>）</p>
+
+<p><strong>通过write写入</strong></p>
+
+<pre><code>f = open(&quot;x.txt&quot;, &quot;a+&quot;)
+
+while True:
+    s = input(&quot;Pls input something:&quot;)
+    f.write(s)
+    f.flush()
+
+f.close()
+</code></pre>
+
+<p><strong>通过writelines写入</strong></p>
+
+<pre><code>f3 = open(&quot;3.txt&quot;, &quot;w&quot;)
+f3.writelines(t)
+f3.close()
+</code></pre>
+
+<h2 id="3-4-其他方法">3.4 其他方法</h2>
+
+<h3 id="3-4-1-truncate">3.4.1 <code>truncate()</code></h3>
+
+<pre><code>&gt;&gt;&gt; print file.truncate.__doc__
+truncate([size]) -&gt; None.  Truncate the file to at most size bytes.
+
+Size defaults to the current file position, as returned by tell().
+</code></pre>
+
+<p>用于清空文本内容或者只保留前N个字符。</p>
+
+<pre><code>f = open(&quot;1.txt&quot;, &quot;r+&quot;)
+# 只保留前10个字符，不传则清空了文本内容
+f.truncate(10)
+f.close()
+</code></pre>
+
+<h3 id="3-4-2-tell-和-seek">3.4.2 <code>tell()</code> 和 <code>seek()</code></h3>
+
+<p><code>tell() -&gt; current file position, an integer (may be a long integer).</code>用于返回文件指针所在的位置。</p>
+
+<p><code>seek(offset[, whence]) -&gt; None.  Move to new file position.</code>用于移动文件指针。</p>
+
+<p>比如在行一行处理大文件时，可能前面N行已经处理成功，记录一下此时的文件位置，下次启动时可以直接移动文件指针接着继续处理。</p>
+
+<p>读取2行后打印文件位置，并继续读取一行：</p>
+
+<pre><code>f = open(&quot;1.txt&quot;, &quot;r+&quot;)
+
+f.readline()
+f.readline()
+print(f.tell())
+print(f.readline())
+
+f.close()
+
+# Output:
+34
+Beautiful is better than ugly.
+
+
+</code></pre>
+
+<p>直接移动文件指针到<code>34</code>的位置读取一行。可以看到输出内容是一致。</p>
+
+<pre><code>f = open(&quot;1.txt&quot;, &quot;r+&quot;)
+
+f.seek(34)
+print(f.readline())
+
+f.close()
+
+# Output:
+Beautiful is better than ugly.
+</code></pre>
+
+<h3 id="3-4-3-flush">3.4.3 <code>flush()</code></h3>
+
+<p><code>flush() -&gt; None.  Flush the internal I/O buffer.</code></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-03.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-03.html">2016-03-15 23:35</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/python-time-module.html">Python常用库 ( 2 ) - 时间模块</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/python-database.html">Python常用库 ( 4 ) - 数据库</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 3 ) - 文件模块.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 3 ) - 文件模块.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

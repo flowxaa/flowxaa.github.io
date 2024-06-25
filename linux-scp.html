@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Linux命令 ( 2 ) - scp</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Linux命令 ( 2 ) - scp</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p>拷贝远程文件到本地</p>
+
+<pre><code>scp root@192.168.0.1:/home/database.php /var/www/database.php
+</code></pre>
+
+<p>拷贝本地文件到其他服务器</p>
+
+<pre><code>scp /var/www/database.php root@192.168.0.1:/home/database.php
+</code></pre>
+
+<p>拷贝目录带上 -r 参数， ssh非22端口带上-P 参数。</p>
+
+<pre><code>scp -P 2133 -r root@192.168.0.1:/home/wwwroot/ /var/www/
+scp -P 2133 /var/www/ root@192.168.0.1:/home/wwwroot/
+</code></pre>
+
+<p><strong>几个可能有用的参数 :</strong></p>
+
+<ul>
+<li>-v 和大多数 linux 命令中的 -v 意思一样 , 用来显示进度 . 可以用来查看连接 , 认证 , 或是配置错误 .</li>
+<li>-C 使能压缩选项 .</li>
+<li>-r 传递目录下的所有内容 .</li>
+<li>-P 选择端口 . 注意 -p 已经被 rcp 使用 .</li>
+<li>-4 强行使用 IPV4 地址 .</li>
+<li>-6 强行使用 IPV6 地址 .</li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2013-11.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2013-11.html">2013-11-15 11:16</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/linux.html">Linux</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/codeigniter-helpers.html">CodeIgniter ( 4 ) - 辅助信息</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/linux-split.html">Linux命令 ( 3 ) - split</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\linux\Linux命令 ( 2 ) - scp.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\linux\Linux命令 ( 2 ) - scp.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

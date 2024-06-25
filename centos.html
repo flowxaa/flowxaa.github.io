@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>CentOS（ 1 ）- 环境安装及初始化配置</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">CentOS（ 1 ）- 环境安装及初始化配置</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-安装centos">一、安装CentOS</a></li>
+<li><a href="#二-centos初始化">二、CentOS初始化</a>
+<ul>
+<li><a href="#2-1-调整固定ip">2.1 调整固定IP</a></li>
+<li><a href="#2-2-调整hostname">2.2 调整hostname</a></li>
+</ul></li>
+<li><a href="#三-宿主机调整">三、宿主机调整</a>
+<ul>
+<li><a href="#3-1-添加授权key">3.1 添加授权KEY</a></li>
+<li><a href="#3-2-配置ssh与hosts">3.2 配置ssh与hosts</a></li>
+</ul></li>
+<li><a href="#四-yum-配置">四、yum 配置</a></li>
+<li><a href="#五-镜像">五、镜像</a>
+<ul>
+<li><a href="#5-1-centos镜像">5.1 CentOS镜像</a></li>
+<li><a href="#5-2-epel-镜像">5.2 epel 镜像</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-安装centos">一、安装CentOS</h1>
+
+<p>工具（都可以从官网下载）：</p>
+
+<ul>
+<li>VMware Fusion</li>
+<li>CentOS：<a href="https://www.centos.org/download/">https://www.centos.org/download/</a></li>
+</ul>
+
+<p>这里CentOS版本选择的7，ISO选择的x86_64，通过网易镜像选择的<code>CentOS-7-x86_64-Minimal-2003.iso</code></p>
+
+<p>Mac下也没啥需要设置的，可视化的界面，安装过程省略，安装之后可查看到版本信息：</p>
+
+<pre><code># uname -a
+Linux peng-master-1 3.10.0-1127.el7.x86_64 #1 SMP Tue Mar 31 23:36:51 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+
+# cat /etc/redhat-release
+CentOS Linux release 7.8.2003 (Core)
+</code></pre>
+
+<h1 id="二-centos初始化">二、CentOS初始化</h1>
+
+<h2 id="2-1-调整固定ip">2.1 调整固定IP</h2>
+
+<pre><code>$ cd  /Library/Preferences/VMware\ Fusion/vmnet8/
+$ more dhcpd.conf
+
+subnet 172.16.196.0 netmask 255.255.255.0 {
+        range 172.16.196.128 172.16.196.254;
+        option broadcast-address 172.16.196.255;
+        option domain-name-servers 172.16.196.2;
+        option domain-name localdomain;
+        default-lease-time 1800;                # default is 30 minutes
+        max-lease-time 7200;                    # default is 2 hours
+        option netbios-name-servers 172.16.196.2;
+        option routers 172.16.196.2;
+}
+</code></pre>
+
+<p>虚拟机通过NAT方式连接，还有个nat.conf文件可以看到NAT网管地址。进入<code>CentOS</code></p>
+
+<pre><code># more /etc/sysconfig/network-scripts/ifcfg-ens33
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=static
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=ens33
+UUID=ce2592d2-6986-4ddc-bbc1-ef087dfc2ee1
+DEVICE=ens33
+ONBOOT=yes
+IPADDR=172.16.196.200
+GATEWAY=172.16.196.2
+NETMASK=255.255.255.0
+DNS1=172.16.196.2
+</code></pre>
+
+<ul>
+<li><code>BOOTPROTO</code>: dchp -&gt; static</li>
+<li><code>ONBOOT</code>: no -&gt; yes</li>
+<li>新增：<code>IPADDR</code>、<code>GATEWAY</code>、<code>NETMASK</code>、<code>DNS1</code></li>
+</ul>
+
+<p>保存后重启网络: <code>service network restart</code></p>
+
+<h2 id="2-2-调整hostname">2.2 调整hostname</h2>
+
+<pre><code># hostnamectl set-hostname peng-master-1
+
+# hostnamectl status
+   Static hostname: peng-master-1
+         Icon name: computer-vm
+           Chassis: vm
+        Machine ID: 8f859574377f40bc8098beaa3346e00c
+           Boot ID: abbf713187bf47ad926d9c92fde55296
+    Virtualization: vmware
+  Operating System: CentOS Linux 7 (Core)
+       CPE OS Name: cpe:/o:centos:centos:7
+            Kernel: Linux 3.10.0-1127.el7.x86_64
+      Architecture: x86-64
+</code></pre>
+
+<p>注：需要重启机器。</p>
+
+<h1 id="三-宿主机调整">三、宿主机调整</h1>
+
+<h2 id="3-1-添加授权key">3.1 添加授权KEY</h2>
+
+<pre><code>$ ssh-copy-id ~/.ssh/id_rsa.pub root@172.16.196.200
+</code></pre>
+
+<h2 id="3-2-配置ssh与hosts">3.2 配置ssh与hosts</h2>
+
+<pre><code>172.16.196.200 peng-master-1
+172.16.196.201 peng-node-1
+172.16.196.202 peng-node-2
+</code></pre>
+
+<p><strong>Mac下配置~/.ssh/config</strong></p>
+
+<pre><code>Host peng-master-1
+    HostName     172.16.196.200
+    Port         22
+    User         root
+    IdentityFile ~/.ssh/id_rsa
+    ServerAliveInterval 10
+
+Host peng-node-1
+    HostName     172.16.196.201
+    Port         22
+    User         root
+    IdentityFile ~/.ssh/id_rsa
+    ServerAliveInterval 10
+
+Host peng-node-2
+    HostName     172.16.196.202
+    Port         22
+    User         root
+    IdentityFile ~/.ssh/id_rsa
+    ServerAliveInterval 10
+</code></pre>
+
+<p>宿主机登录方式：<code>ssh peng-master-1</code>，如果使用<code>Xshell</code>就可以省略掉这步。</p>
+
+<h1 id="四-yum-配置">四、yum 配置</h1>
+
+<p>yum 的配置文件分为两部分：main 和repository</p>
+
+<ul>
+<li>main 部分定义了全局配置选项，整个yum 配置文件应该只有一个main。常位于/etc/yum.conf 中。</li>
+<li>repository 部分定义了每个源/服务器的具体配置，可以有一到多个。常位于/etc/yum.repo.d 目录下的各文件中。</li>
+</ul>
+
+<p>yum.conf 文件一般位于/etc目录下，一般其中只包含main部分的配置选项。</p>
+
+<h1 id="五-镜像">五、镜像</h1>
+
+<h2 id="5-1-centos镜像">5.1 CentOS镜像</h2>
+
+<p>CentOS，是基于 Red Hat Linux 提供的可自由使用源代码的企业级 Linux 发行版本；是一个稳定，可预测，可管理和可复制的免费企业级计算平台。</p>
+
+<p><strong>1. 备份</strong></p>
+
+<pre><code>mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
+</code></pre>
+
+<p><strong>2. 下载镜像</strong></p>
+
+<p>下载新的 CentOS-Base.repo 到 /etc/yum.repos.d/</p>
+
+<pre><code># CentOS6
+$ wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-6.repo
+
+# CentOS7
+$ wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo
+
+# CentOS8
+$ wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-8.repo
+</code></pre>
+
+<p><strong>3. 更新缓存</strong></p>
+
+<pre><code>yum clean all
+yum makecache
+</code></pre>
+
+<h2 id="5-2-epel-镜像">5.2 epel 镜像</h2>
+
+<p>EPEL (Extra Packages for Enterprise Linux), 是由 Fedora Special Interest Group 维护的 Enterprise Linux（RHEL、CentOS）中经常用到的包。</p>
+
+<p><strong>1. 备份</strong></p>
+
+<p>备份，如有配置其他epel源</p>
+
+<pre><code>mv /etc/yum.repos.d/epel.repo /etc/yum.repos.d/epel.repo.backup
+mv /etc/yum.repos.d/epel-testing.repo /etc/yum.repos.d/epel-testing.repo.backup
+</code></pre>
+
+<p><strong>2. 下载镜像</strong></p>
+
+<p><strong>epel(RHEL 8)</strong></p>
+
+<p>1）安装 epel 配置包</p>
+
+<pre><code>$ yum install -y https://mirrors.aliyun.com/epel/epel-release-latest-8.noarch.rpm
+</code></pre>
+
+<p>2）将 repo 配置中的地址替换为阿里云镜像站地址</p>
+
+<pre><code>sed -i 's|^#baseurl=https://download.fedoraproject.org/pub|baseurl=https://mirrors.aliyun.com|' /etc/yum.repos.d/epel*
+sed -i 's|^metalink|#metalink|' /etc/yum.repos.d/epel*
+</code></pre>
+
+<p><strong>eple(RHEL5-7)</strong></p>
+
+<pre><code>$ wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+
+$ wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-6.repo
+
+$ wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-5.repo
+</code></pre>
+
+<p><strong>3. 更新缓存</strong></p>
+
+<pre><code>yum clean all
+yum makecache
+</code></pre>
+
+<ul>
+<li>[1] <a href="https://developer.aliyun.com/mirror/">阿里云官方镜像站</a></li>
+<li>[2] <a href="http://mirrors.163.com/">网易开源镜像站</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2017-10.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2017-10.html">2017-10-01 08:10</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/运维.html">运维</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/centos.html">CentOS</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/aliyun-disk-mount.html">阿里云磁盘挂载</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/linux-user.html">CentOS（ 2 ）- 用户管理</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\CentOS（ 1 ）- 环境安装及初始化配置.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\CentOS（ 1 ）- 环境安装及初始化配置.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

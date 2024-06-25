@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>通过SMB实现文件共享</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">通过SMB实现文件共享</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <p><code>Samba</code>可以实现<code>Linux</code>与<code>Win</code>之间的文件共享，在内部开发文档共享上还是极好的。</p>
+
+<h1 id="安装samba">安装Samba</h1>
+
+<p>查看<code>Samba</code>是否已安装</p>
+
+<pre><code># rpm -qa | grep samba
+</code></pre>
+
+<p>通过<code>yum</code>直接安装<code>Samba</code>服务端和客户端</p>
+
+<pre><code>#yum -y install samba samba-client
+</code></pre>
+
+<h1 id="配置samba">配置Samba</h1>
+
+<p><code>Samba</code>的主配置文件为<code>/etc/samba/smb.conf</code>，这里主要达到在<code>win</code>下通过帐号登录<code>linux</code>共享即可，复杂的配置可参考最后的地址。直接在<code>smb.conf</code>后加上一段共享块。</p>
+
+<pre><code>[public]
+    comment = Public Files
+    path = /data/share/public
+    public = yes
+    writable = yes
+    browseable = yes
+    create mode = 0664
+    directory mode = 0775
+    write list = smbuser
+    guest ok = no
+</code></pre>
+
+<p>配置块通过<code>TAB</code>来缩进，拷贝出来的可能是空格。添加系统用户并将用户添加到<code>samba</code>账户中</p>
+
+<pre><code># useradd -s /sbin/nologin smbuser
+# smbpasswd -a smbuser
+</code></pre>
+
+<p><code>smbpasswd</code>命令</p>
+
+<ul>
+<li><code>smbpasswd -a</code> 增加用户（要增加的用户必须以是系统用户）</li>
+<li><code>smbpasswd -d</code> 冻结用户，就是这个用户不能在登录了</li>
+<li><code>smbpasswd -e</code> 恢复用户，解冻用户，让冻结的用户可以在使用</li>
+<li><code>smbpasswd -n</code> 把用户的密码设置成空. 注意如果设置了&rdquo;NO PASSWORD&rdquo;之后，要允许使用者以空口令登入到Samba服务器，管理员必须在smb.conf配置档案的[global]段中设置以下的参数：null passwords = yes</li>
+<li><code>smbpasswd -x</code> 删除用户</li>
+</ul>
+
+<p>测试配置是否无误 - <strong>testparm</strong></p>
+
+<p>测试<code>Samba</code>的设置是否正确无误，如上面的配置</p>
+
+<pre><code># testparm -s smb.conf 
+Load smb config files from smb.conf
+Processing section &quot;[public]&quot;
+Loaded services file OK.
+Server role: ROLE_STANDALONE
+[global]
+    workgroup = MYGROUP
+    server string = Samba Server Version %v
+    passdb backend = tdbsam
+    log file = /var/log/samba/%m.log
+    cups options = raw
+ 
+[public]
+    comment = Public Files
+    path = /data/share/public
+    read only = No
+</code></pre>
+
+<h1 id="启动samba">启动Samba</h1>
+
+<p>查看<code>Samba</code>服务状态、启动及重启。</p>
+
+<pre><code># service smb status
+smbd (pid  30408) is running...
+nmbd (pid  30411) is running...
+ 
+# service smb stop
+Shutting down SMB services:                                [  OK  ]
+Shutting down NMB services:                                [  OK  ]
+ 
+# service smb start
+Starting SMB services:                                     [  OK  ]
+Starting NMB services:                                     [  OK  ]
+ 
+# service smb restart
+Shutting down SMB services:                                [  OK  ]
+Shutting down NMB services:                                [  OK  ]
+Starting SMB services:                                     [  OK  ]
+Starting NMB services:                                     [  OK  ]
+</code></pre>
+
+<p>设置<code>Samba</code>服务开机自启动</p>
+
+<pre><code># chkconfig --list | grep smb
+smb             0:off   1:off   2:off   3:off   4:off   5:off   6:off
+# chkconfig --level 35 smb on
+# chkconfig --list | grep smb
+smb             0:off   1:off   2:off   3:on    4:off   5:on    6:off
+</code></pre>
+
+<p><strong>Windows清除共享记录</strong></p>
+
+<p>通过<code>Samba</code>连接成功后会在本地记录登录的帐号密码，下次可直接连接，如果需要切换帐号可手动删除连接记录。
+查看访问记录</p>
+
+<pre><code>C:\Users\Administrator&gt;net use
+不记录新的网络连接。
+ 
+状态       本地        远程                      网络
+ 
+--------------------------------------------------------------------------
+OK                     \\42.121.104.209\public   Microsoft Windows Network
+命令成功完成。
+</code></pre>
+
+<p><strong>清除访问记录</strong></p>
+
+<pre><code>C:\Users\Administrator&gt;net use \\42.121.104.209\public /delete
+\\42.121.104.209\public 已经删除。
+</code></pre>
+
+<p><strong>说明</strong>：如何<code>Window</code>下提示没有权限访问，请与管理员管理员联系请求访问权限。则可能是selinux防火墙的问题，执行下面命令关闭selinux防火墙试试：</p>
+
+<pre><code>setenforce 0
+</code></pre>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2014-09.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2014-09.html">2014-09-17 19:52</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/运维.html">运维</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/linux-svn-install.html">Linux下安装 SVN</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/linux-convert.html">Linux命令 ( 5 ) - convert</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\通过SMB实现文件共享.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\通过SMB实现文件共享.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

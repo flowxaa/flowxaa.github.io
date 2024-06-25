@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>运维自动化工具 - SaltStack</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">运维自动化工具 - SaltStack</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="一-概述">一、概述</h1>
+
+<h2 id="1-1-关于salt">1.1 关于Salt</h2>
+
+<p><code>Salt</code> 是：</p>
+
+<ul>
+<li>一个配置管理系统，能够维护预定义状态的远程节点(比如，确保指定的包被安装，指定的服务在运行)</li>
+<li>一个分布式远程执行系统，用来在远程节点（可以是单个节点，也可以是任意规则挑选出来的节点）上执行命令和查询数据</li>
+</ul>
+
+<h2 id="1-2-salt架构">1.2 Salt架构</h2>
+
+<p><code>Salt</code>采用<code>Client/Server</code>架构。</p>
+
+<h2 id="1-3-salt安装">1.3 Salt安装</h2>
+
+<p><code>Salt</code>的安装比较简单，通过<code>yum</code>就可以直接安装。</p>
+
+<h3 id="1-3-1-centos7机器">1.3.1 CentOS7机器</h3>
+
+<table>
+<thead>
+<tr>
+<th>Hostname</th>
+<th>IP</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>peng-master-1</td>
+<td>172.16.196.200</td>
+<td>安装salt-master,salt-minion</td>
+</tr>
+
+<tr>
+<td>peng-node-1</td>
+<td>172.16.196.201</td>
+<td>安装salt-minion</td>
+</tr>
+
+<tr>
+<td>peng-node-2</td>
+<td>172.16.196.202</td>
+<td>安装salt-minion</td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="1-3-2-安装epel源">1.3.2 安装epel源</h3>
+
+<pre><code>[root@peng-master-1 ~]# wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+[root@peng-master-1 ~]# wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+[root@peng-master-1 ~]# yum clean all
+[root@peng-master-1 ~]# yum makecache
+</code></pre>
+
+<h3 id="1-3-3-master节点安装">1.3.3 Master节点安装</h3>
+
+<pre><code>[root@peng-master-1 ~]# yum install -y salt-master
+
+# 启动Master并设置开机启动(CentOS7)
+[root@peng-master-1 ~]# systemctl start salt-master
+[root@peng-master-1 ~]# systemctl enable salt-master
+</code></pre>
+
+<p>配置文件在<code>/etc/salt/master</code></p>
+
+<h3 id="1-3-4-node节点安装">1.3.4 Node节点安装</h3>
+
+<pre><code>[root@peng-node-1 ~]# yum install -y salt-minion
+
+# 启动Minion并设置开机启动(CentOS7)
+[root@peng-node-1 ~]# systemctl start salt-minion
+[root@peng-node-1 ~]# systemctl enable salt-minion
+</code></pre>
+
+<p>配置文件在<code>/etc/salt/minion</code></p>
+
+<p>如果配置了阿里源还是找不到，可以按照官网的配置方式(CentOS7)：<a href="https://repo.saltstack.com/#rhel">https://repo.saltstack.com/#rhel</a></p>
+
+<ol>
+<li><em>Run the following commands to install the SaltStack repository and key:</em></li>
+</ol>
+
+<pre><code>   sudo yum install https://repo.saltstack.com/py3/redhat/salt-py3-repo-3002.el7.noarch.rpm 
+</code></pre>
+
+<ol>
+<li><em>Run</em> <code>sudo yum clean expire-cache</code></li>
+
+<li><p><em>Install the salt-minion, salt-master, or other Salt components:</em></p>
+
+<ul>
+<li><code>sudo yum install salt-master</code></li>
+<li><code>sudo yum install salt-minion</code></li>
+<li><code>sudo yum install salt-ssh</code></li>
+<li><code>sudo yum install salt-syndic</code></li>
+<li><code>sudo yum install salt-cloud</code></li>
+<li><code>sudo yum install salt-api</code></li>
+</ul></li>
+
+<li><p>*(<strong>Upgrade only</strong>) Restart all upgraded services, for example:*</p></li>
+</ol>
+
+<pre><code>   sudo systemctl restart salt-minion
+</code></pre>
+
+<h1 id="二-salt配置">二、Salt配置</h1>
+
+<h2 id="2-1-master配置">2.1 Master配置</h2>
+
+<pre><code>grep -v ^# /etc/salt/master|grep -v ^$
+</code></pre>
+
+<h2 id="2-2-node配置">2.2 Node配置</h2>
+
+<p>调整配置文件<code>/etc/salt/minion</code>，在<code>Node</code>节点中指定<code>Master</code>地址。</p>
+
+<pre><code>[root@peng-node-1 ~]# vi /etc/salt/minion
+
+# Set the location of the salt master server. If the master server cannot be
+# resolved, then the minion will fail to start.
+#master: salt
+master: 172.16.196.200
+
+[root@peng-node-1 ~]# systemctl restart salt-minion
+</code></pre>
+
+<h2 id="2-3-配置认证">2.3 配置认证</h2>
+
+<p><code>Node</code>节点配置<code>master</code>地址之后重启服务，在<code>master</code>通过<code>salt-key</code>就可以看到列表。</p>
+
+<pre><code>[root@peng-master-1 ~]# salt-key -L
+Accepted Keys:
+Denied Keys:
+Unaccepted Keys:
+peng-node-1
+peng-node-2
+Rejected Keys:
+</code></pre>
+
+<p>需要接受对应的<code>KEY</code>， 通过<code>salt-key -h</code>可以看到接受与拒绝，这里接受所有的<code>KEY</code>。</p>
+
+<pre><code>[root@peng-master-1 ~]# salt-key -A
+The following keys are going to be accepted:
+Unaccepted Keys:
+peng-node-1
+peng-node-2
+Proceed? [n/Y] Y
+Key for minion peng-node-1 accepted.
+Key for minion peng-node-2 accepted.
+</code></pre>
+
+<h2 id="2-4-salt测试">2.4 Salt测试</h2>
+
+<p>执行<code>ping</code>操作</p>
+
+<pre><code>[root@peng-master-1 ~]# salt '*' test.ping
+peng-node-1:
+    True
+peng-node-2:
+    True
+</code></pre>
+
+<p>远程执行命令</p>
+
+<pre><code>[root@peng-master-1 ~]# salt '*' cmd.run 'free -m'
+peng-node-2:
+                  total        used        free      shared  buff/cache   available
+    Mem:            972         434          62           8         475         383
+    Swap:             0           0           0
+peng-node-1:
+                  total        used        free      shared  buff/cache   available
+    Mem:            972         415          89           8         467         402
+    Swap:             0           0           0
+</code></pre>
+
+<h1 id="三-常用命令">三、 常用命令</h1>
+
+<h2 id="3-1-基础命令">3.1 基础命令</h2>
+
+<p>指定所有机器</p>
+
+<pre><code># salt '*' cmd.run 'cp /etc/hosts /etc/hosts-$(date +%F)'
+</code></pre>
+
+<p>指定多个IP机器</p>
+
+<pre><code># salt -L &quot;127.0.0.1,128.0.0.1&quot; cmd.run 'cat /etc/hosts | grep -E &quot;127.0.0.1|128.0.0.1&quot;'
+</code></pre>
+
+<p>指定设置好的组</p>
+
+<pre><code># salt -N test cmd.run 'netstat -tlnp'
+</code></pre>
+
+<h2 id="3-2-统计cpu">3.2 统计CPU</h2>
+
+<p>统计<code>CPU</code>核数</p>
+
+<pre><code># salt '*' cmd.run 'cat /proc/cpuinfo| grep &quot;processor&quot;| wc -l'
+</code></pre>
+
+<p>统计<code>peng</code>分组下<code>CPU</code>空闲率</p>
+
+<pre><code># 各台机器CPU空闲率，统计10次的平均CPU
+$ salt -N peng cmd.run 'top -n 10 -b | grep &quot;Cpu(s):&quot; | awk -F &quot;,&quot; &quot;{print \$4}&quot; | awk -F &quot;%&quot; &quot;{a+=\$1}END{print a/10}&quot;'
+
+# 所有机器平均空闲率
+$ salt -N peng cmd.run 'top -n 10 -b | grep &quot;Cpu(s):&quot; | awk -F &quot;,&quot; &quot;{print \$4}&quot; | awk -F &quot;%&quot; &quot;{a+=\$1}END{print a/10}&quot;' | grep -v &quot;:&quot; | awk '{sum+=$1}END {print sum/NR}'
+</code></pre>
+
+<h2 id="3-3-统计内存">3.3 统计内存</h2>
+
+<p>统计内存大小</p>
+
+<pre><code># salt '*' cmd.run 'cat /proc/meminfo | head -n 1'
+</code></pre>
+
+<p>统计<code>peng</code>分组下内存使用</p>
+
+<pre><code># 各台机器的内存使用率
+$ salt -N peng cmd.run 'free |head -n 2| tail -n 1' | grep Mem | awk '{print ($4+$6+$7)*100/$2}'
+
+# 所有机器的内存使用率
+$ salt -N peng cmd.run 'free |head -n 2| tail -n 1' | grep Mem | awk '{a+=$4;b+=$6;c+=$7;d+=$2}END{print (a+b+c)*100/d}'
+</code></pre>
+
+<h2 id="3-4-host替换">3.4 Host替换</h2>
+
+<p>修改<code>127.0.0.1 test.salt.com</code>为<code>128.0.0.1 test.salt.com</code></p>
+
+<pre><code># salt -N test cmd.run 'sed -i &quot;s/127.0.0.1 test.salt.com/128.0.0.1 test.salt.com/&quot; /etc/hosts'
+</code></pre>
+
+<h2 id="3-5-host追加">3.5 Host追加</h2>
+
+<p>在<code>127.0.0.1 test.local</code>后增加一行<code>128.0.0.1 test.salt.com</code></p>
+
+<pre><code># salt -N test cmd.run 'sed -i &quot;/127.0.0.1 test.local/a\128.0.0.1 test.salt.com&quot; /etc/hosts'
+</code></pre>
+
+<h2 id="3-6-删除host">3.6 删除Host</h2>
+
+<p>删除<code>127.0.0.1 test.local</code>配置</p>
+
+<pre><code># salt -N test cmd.run 'sed -i &quot;/127.0.0.1 test.local/d&quot; /etc/hosts'
+</code></pre>
+
+<p><img src="../../static/uploads/saltstack.png" alt="" /></p>
+
+<ul>
+<li>[1] <a href="https://www.cnblogs.com/xintiao-/p/10380656.html">saltstack高效运维</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2019-07.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2019-07.html">2019-07-26 23:50</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/运维.html">运维</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/zookeeper.html">分布式协调服务 - Zookeeper</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/redis-memory-check.html">Redis内存占用异常排查</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\运维自动化工具 - SaltStack.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\运维\运维自动化工具 - SaltStack.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

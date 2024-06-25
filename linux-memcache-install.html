@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Linux下安装 Memcache</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Linux下安装 Memcache</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="安装memcached服务端">安装Memcached服务端</h1>
+
+<p>memcached依赖于libevent，需要先安装libevent。</p>
+
+<p><strong>安装 libevent</strong></p>
+
+<pre><code># tar zxvf libevent-2.0.21-stable.tar.gz
+# cd libevent-2.0.21-stable
+# ./configure --prefix=/usr/local/libevent
+# make &amp;&amp; make install
+</code></pre>
+
+<p><strong>安装memcached服务端</strong></p>
+
+<pre><code># wget http://www.memcached.org/files/memcached-1.4.20.tar.gz
+# tar zxvf memcached-1.4.20.tar.gz 
+# cd memcached-1.4.20
+ 
+# ./configure --prefix=/usr/local/webserver/memcached --with-libevent=/usr/local/libevent
+# make &amp;&amp; make install
+</code></pre>
+
+<h1 id="启动memcached">启动memcached</h1>
+
+<pre><code># cd /usr/local/webserver/memcached/
+# ./bin/memcached -d -m 32 -u root -p 11211 -c 128 –P /tmp/memcached.pid
+</code></pre>
+
+<p>启动参数说明：</p>
+
+<ul>
+<li>-d 选项是启动一个守护进程。</li>
+<li>-u root 表示启动memcached的用户为root。</li>
+<li>-m 是分配给Memcache使用的内存数量，单位是MB，默认64MB。</li>
+<li>-M return error on memory exhausted (rather than removing items)。</li>
+<li>-u 是运行Memcache的用户，如果当前为root 的话，需要使用此参数指定用户。</li>
+<li>-p 是设置Memcache的TCP监听的端口，最好是1024以上的端口。</li>
+<li>-c 选项是最大运行的并发连接数，默认是1024。</li>
+<li>-P 是设置保存Memcache的pid文件。</li>
+</ul>
+
+<h1 id="php安装memcache扩展">PHP安装memcache扩展</h1>
+
+<p>安装地址
+- <strong>memcached</strong> : <a href="http://pecl.php.net/package/memcached">http://pecl.php.net/package/memcached</a>
+- <strong>memcache</strong> : <a href="http://pecl.php.net/package/memcache">http://pecl.php.net/package/memcache</a></p>
+
+<pre><code># wget http://pecl.php.net/get/memcache-2.2.7.tgz
+# tar zxvf memcache-2.2.7.tgz
+# cd memcache-2.2.7
+# ./configure --enable-memcache --with-php-config=/usr/local/webserver/php/bin/php-config --with-zlib-dir
+# make &amp;&amp; make install
+</code></pre>
+
+<p>编译完成后修改php.ini添加extension=memcache.so ，重启php-fpm</p>
+
+<h1 id="php安装memcached扩展">PHP安装memcached扩展</h1>
+
+<pre><code># wget http://launchpadlibrarian.net/66527034/libmemcached-0.48.tar.gz
+# cd libmemcached-0.48
+# ./configure --prefix=/usr/local/libmemcached  --with-memcached
+# make &amp;&amp; make install
+</code></pre>
+
+<p>安装要注意的问题：</p>
+
+<p>1， 安装过程中不要忘了，&ndash;with-memcached，不然会提示你</p>
+
+<pre><code>checking for memcached... no
+configure: error: &quot;could not find memcached binary&quot;
+</code></pre>
+
+<p>2，你的memcached是不是1.2.4以上的，如果不是会提示你</p>
+
+<pre><code>clients/ms_thread.o: In function `ms_setup_thread':
+/home/zhangy/libmemcached-0.42/clients/ms_thread.c:225: undefined reference to `__sync_fetch_and_add_4'
+clients/ms_thread.o:/home/zhangy/libmemcached-0.42/clients/ms_thread.c:196: more undefined references to `__sync_fetch_and_add_4' follow
+collect2: ld returned 1 exit status
+make[2]: *** [clients/memslap] Error 1
+make[2]: Leaving directory `/home/zhangy/libmemcached-0.42'
+</code></pre>
+
+<p>解决办法是<code>--disable-64bit CFLAGS=&quot;-O3-march=i686&quot;</code>。</p>
+
+<pre><code># wget http://pecl.php.net/get/memcached-2.2.0.tgz
+# cd memcached-2.2.0
+# /usr/local/webserver/php/bin/phpize
+# ./configure --enable-memcached --with-php-config=/usr/local/webserver/php/bin/php-config --with-libmemcached-dir=/usr/local/libmemcached --disable-memcached-sasl
+
+checking for sasl/sasl.h... no
+configure: error: no, sasl.h is not available. Run configure with --disable-memcached-sasl to disable this check
+ 
+# make &amp;&amp; make install
+</code></pre>
+
+<p>编译完成后修改php.ini添加extension=memcached.so ，重启php-fpm</p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2014-09.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2014-09.html">2014-09-01 16:33</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/linux.html">Linux</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/memcache.html">Memcache</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/linux-redis-install.html">Linux下安装 Redis</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/vsftp.html">FTP服务端 - Vsftp</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\linux\Linux下安装 Memcache.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\linux\Linux下安装 Memcache.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Python常用库 ( 1 ) - 命令行参数解析</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Python常用库 ( 1 ) - 命令行参数解析</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <h1 id="optparser">optparser</h1>
+
+<pre><code>from optparse import OptionParser
+
+# Simple usage example:
+parser = OptionParser()
+parser.add_option(&quot;-f&quot;, &quot;--from&quot;, action=&quot;store&quot;, dest=&quot;from&quot;, type=&quot;string&quot;, default=&quot;web&quot;, help=u&quot;帮助信息&quot;)
+
+# 函数定义为def add_option(self, *args, **kwargs):。可指定多个参数名
+parser.add_option(&quot;-c&quot;, &quot;--call&quot;, &quot;-x&quot;, &quot;-y&quot;,  action=&quot;store_true&quot;, dest=&quot;call&quot;, default=False, help=u&quot;帮助信息&quot;)
+
+(options, arg) = parser.parse_args()
+
+print(options, arg)
+
+# 转换为字典
+print(vars(options))
+</code></pre>
+
+<h2 id="add-option">add_option</h2>
+
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>action</td>
+<td>默认为store。 store_true 和 store_false，store_const 、append 、count</td>
+</tr>
+
+<tr>
+<td>dest</td>
+<td>将接收的数据存储到<code>dest</code>变量上</td>
+</tr>
+
+<tr>
+<td>type</td>
+<td>数据类型：&rdquo;string&rdquo;, &ldquo;int&rdquo;, &ldquo;long&rdquo;, &ldquo;float&rdquo;, &ldquo;complex&rdquo;, &ldquo;choice&rdquo;</td>
+</tr>
+
+<tr>
+<td>default</td>
+<td>默认值</td>
+</tr>
+
+<tr>
+<td>help</td>
+<td>帮助信息</td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="使用说明">使用说明</h2>
+
+<pre><code>$ python x.py -f sina
+{'call': False, 'from': 'sina'}
+
+$ python x.py --from=sina
+{'call': False, 'from': 'sina'}
+</code></pre>
+
+<h1 id="argparse">argparse</h1>
+
+<ul>
+<li><a href="http://blog.xiayf.cn/2013/03/30/argparse/">http://blog.xiayf.cn/2013/03/30/argparse/</a></li>
+<li><a href="https://docs.python.org/zh-cn/3.7/library/optparse.html?highlight=optparse#module-optparse">https://docs.python.org/zh-cn/3.7/library/optparse.html?highlight=optparse#module-optparse</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2016-03.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2016-03.html">2016-03-02 07:53</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/python.html">Python</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/supervisor.html">Supervisor配置</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/python-time-module.html">Python常用库 ( 2 ) - 时间模块</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 1 ) - 命令行参数解析.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\python\Python常用库 ( 1 ) - 命令行参数解析.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

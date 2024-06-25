@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Kubernetes基础 ( 10 ) - 小结</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Kubernetes基础 ( 10 ) - 小结</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-概述">一、概述</a>
+<ul>
+<li><a href="#1-1-背景">1.1 背景</a></li>
+<li><a href="#1-2-容器化改造">1.2 容器化改造</a></li>
+</ul></li>
+<li><a href="#二-docker-kubernetes">二、Docker + Kubernetes</a>
+<ul>
+<li><a href="#2-1-关于docker">2.1 关于Docker</a></li>
+<li><a href="#2-2-容器解决了什么问题">2.2 容器解决了什么问题</a></li>
+<li><a href="#2-3-关于kubernetes">2.3 关于Kubernetes</a></li>
+<li><a href="#2-4-k8s解决了什么问题">2.4 k8s解决了什么问题？</a></li>
+</ul></li>
+<li><a href="#三-kubernetes特性">三、Kubernetes特性</a>
+<ul>
+<li><a href="#3-1-健康监测">3.1 健康监测</a></li>
+<li><a href="#3-2-自我修复">3.2 自我修复</a></li>
+<li><a href="#3-3-滚动更新与回滚">3.3 滚动更新与回滚</a></li>
+<li><a href="#3-4-服务发现">3.4 服务发现</a></li>
+<li><a href="#3-5-负载均衡">3.5 负载均衡</a></li>
+<li><a href="#3-6-弹性收缩">3.6 弹性收缩</a></li>
+<li><a href="#3-7-资源调度">3.7 资源调度</a></li>
+</ul></li>
+<li><a href="#四-k8s如何使用">四、k8s如何使用？</a>
+<ul>
+<li><a href="#4-1-基础镜像">4.1 基础镜像</a></li>
+<li><a href="#4-2-源代码镜像如何打">4.2 源代码镜像如何打？</a></li>
+<li><a href="#4-3-配置文件如何管理">4.3 配置文件如何管理？</a></li>
+<li><a href="#4-4-源代码文件如何共享">4.4 源代码文件如何共享？</a></li>
+</ul></li>
+<li><a href="#五-相关资料">五、相关资料</a>
+<ul>
+<li><a href="#6-1-官方仓库">6.1 官方仓库</a></li>
+<li><a href="#6-2-个人整理">6.2 个人整理</a></li>
+<li><a href="#6-3-容器化经验">6.3 容器化经验</a></li>
+<li><a href="#6-4-学习资料">6.4 学习资料</a></li>
+</ul></li>
+</ul>
+</nav>
+
+<h1 id="一-概述">一、概述</h1>
+
+<h2 id="1-1-背景">1.1 背景</h2>
+
+<p>接触运维以后，发现系统整体资源利用率不高，由于各种环境、软件依赖的问题，大部分机器也只部署一种服务， 所以机器资源浪费比较严重，平均<code>CPU</code>使用率大概只有10%。所以要想提升机器利用率，第一步得解决软件依赖的问题。而容器也许是比较好的方案，进而需要了解容器的编排工具<code>kubernetes</code>。</p>
+
+<h2 id="1-2-容器化改造">1.2 容器化改造</h2>
+
+<p>对旧系统的改造设计一整套运维流程的变更，镜像打包、发布流程、容器管理、容器监控、日志的收集处理。</p>
+
+<h1 id="二-docker-kubernetes">二、Docker + Kubernetes</h1>
+
+<p><img src="../../static/uploads/kubernetes-overview.png" alt="" /></p>
+
+<h2 id="2-1-关于docker">2.1 关于Docker</h2>
+
+<p><code>Docker</code>是一个开源的应用容器引擎， 可以让开发者打包他们的应用以及依赖包到一个轻量级、可移植的容器中，然后发布到任何流行的<code>Linux</code>机器上，也可以实现虚拟化。</p>
+
+<h2 id="2-2-容器解决了什么问题">2.2 容器解决了什么问题</h2>
+
+<p>虚拟机上一个机器运行多个项目需要考虑软件的环境，系统资源的抢占，而容器之间是完全隔离的，它的运行环境不受其他容器的影响，容器的资源可以做独立控制。这样下来，一台虚拟机就变成了多台容器，管理的粒度更细，资源的利用率会更好些。</p>
+
+<h2 id="2-3-关于kubernetes">2.3 关于Kubernetes</h2>
+
+<p><code>Kubernetes</code>是<code>Google</code>在2014年开源的一个容器集群管理系统，简称<code>k8s</code>。</p>
+
+<h2 id="2-4-k8s解决了什么问题">2.4 k8s解决了什么问题？</h2>
+
+<p>主要解决了容器的编排问题，让容器化在生产环境落地。<code>k8s</code>把虚拟机当做一个整体的资源池，自己实现资源的管理，用户只需要向<code>k8s</code>申请需要什么样的资源，要部署什么样的应用，<code>k8s</code>会从这个资源池中自己寻找资源，创建对应的资源对象。</p>
+
+<h1 id="三-kubernetes特性">三、Kubernetes特性</h1>
+
+<h2 id="3-1-健康监测">3.1 健康监测</h2>
+
+<p>通过<code>Pod</code>的<code>readiness</code>可以判断容器是否准备好了，而通过<code>liveness</code>可以判断容器是否还存活，类似阿里云SLB的端口监听，如果有异常会且走流量，而<code>k8s</code>如果检测到<code>Pod</code>异常则会自动修复，确保服务的可靠性。</p>
+
+<h2 id="3-2-自我修复">3.2 自我修复</h2>
+
+<p>比如<code>supervisor</code>突然挂了，进程突然退出了，健康检测失败后则会重启<code>Pod</code>尝试恢复服务。</p>
+
+<h2 id="3-3-滚动更新与回滚">3.3 滚动更新与回滚</h2>
+
+<p>以往的更新可能会需要自己来控制不同节点的更新，服务的发布重启可能有短暂的服务不可用。而k8s的<code>Deploy</code>机制可以让<code>Pod</code>一个一个被替换掉，从而实现不间断更新，从系统层面实现不同类型应用的更新。</p>
+
+<h2 id="3-4-服务发现">3.4 服务发现</h2>
+
+<p>传统配置上需要配置后端IP实现负载均衡，如果IP变化则需要手动调整。而<code>Service</code>可以自动发现<code>Pod</code>，当新增、重建、或者删除<code>Pod</code>后，<code>Service</code>都可以自动维护后端PodIP列表，不再需要手动管理后端<code>PodIP</code>。</p>
+
+<h2 id="3-5-负载均衡">3.5 负载均衡</h2>
+
+<p><code>k8s</code>对外暴露服务的方式有<code>NodePort</code>、<code>LoadBalancer</code>、<code>Ingress</code>。<code>Service</code>实现的是4层的负载均衡，<code>Ingress</code>实现的是7层的负载均衡，通过<code>ingress-controlle</code>r将请求转向到后端的<code>Service</code>。<code>Service</code>则可以通过<code>iptables</code>、<code>ipvs</code>将请求转向后端<code>Pod</code>实现负载均衡。</p>
+
+<h2 id="3-6-弹性收缩">3.6 弹性收缩</h2>
+
+<p>可以通过对系统资源的监控，实现对<code>Pod</code>的自动扩容与缩容，让资源利用上更合理，也让服务变得更高可用。</p>
+
+<h2 id="3-7-资源调度">3.7 资源调度</h2>
+
+<p>大部分情况都是运维根据项目要求来选择对应的机器，资源的控制由运维控制，k8s将这种控制进行抽象，根据调度策略将<code>Pod</code>调度到最优的<code>Node</code>节点上，从而充分利用系统资源。当然机器资源的不同，应用要求不同，也可以人为控制节点亲和性。</p>
+
+<h1 id="四-k8s如何使用">四、k8s如何使用？</h1>
+
+<h2 id="4-1-基础镜像">4.1 基础镜像</h2>
+
+<p>比如Python的镜像或者PHP的镜像，基础镜像应该满足不了项目使用，那我们自己就需要在这些基础镜像上做一些扩展或者第三方包的安装，这里应该有两种方式：</p>
+
+<ul>
+<li><code>Dockerfile</code>继承官方基础镜像。</li>
+<li><code>Dockerfile</code>继承自定义的基础镜像。</li>
+</ul>
+
+<p>自定义相当于在上面在封装一层，安装一些日常需要使用的扩展，大部分应用的<code>Dockerfile</code>可能就不需要参与到具体环境的编译来了。</p>
+
+<h2 id="4-2-源代码镜像如何打">4.2 源代码镜像如何打？</h2>
+
+<p><strong>4.1.1 以运行环境镜像为基础打镜像</strong></p>
+
+<p>比如<code>Python</code>项目的源代码，基础镜像为已打好的镜像，直接将代码文件拷贝到镜像中，镜像文件有项目运行的环境。如果对运行环境有什么特殊要求，也可以在<code>Dockerfile</code>里直接处理了。</p>
+
+<p><strong>4.1.2 以通用镜像为基础打镜像</strong></p>
+
+<p>比如以<code>Alpine</code>或者<code>busybox</code>为基础镜像，只需要将源代码拷贝到镜像中即可，镜像不具备项目运行的环境。隔离了源代码和环境，应用需要的独立环境只能运维处理，Yaml文件的容器部分需要将源代码镜像和运行环境镜像连接起来。</p>
+
+<h2 id="4-3-配置文件如何管理">4.3 配置文件如何管理？</h2>
+
+<p>应用层级与依赖的数据库配置、日志级别等配置，服务层级有<code>Nginx</code>配置文件、<code>PHP</code>配置文件等。直接打进镜像后面任意修改就都得更新镜像了。而<code>Kubernetes</code>提供了<code>ConfigMap</code>、<code>Secret</code>、<code>PV</code>这些存储方式，类似这种配置文件使用<code>ConfigMap</code>、<code>Secret</code>这种应该就可以满足了。</p>
+
+<p>然后在<code>initC</code>容器里可以将配置文件拷贝到容器里，或者容器直接挂载到特定目录去。</p>
+
+<h2 id="4-4-源代码文件如何共享">4.4 源代码文件如何共享？</h2>
+
+<p>比如<code>Python</code>的项目需要配个<code>Nginx</code>的话，<code>Nginx</code>只需要配置反向代理的<code>IP</code>即可，而<code>PHP</code>必须借助<code>Nginx</code>，他们俩都需要可以访问到源代码，就涉及到同一个<code>Pod</code>中多容器或者不同<code>Pod</code>中数据共享的问题。比如<code>PHP+Nginx</code>：</p>
+
+<p>如果处在不同的<code>Pod</code>中，<code>Nginx</code>的配置文件<code>fastcgi_pass</code>可以通过<code>php-svc</code>进行关联，如果处理同一个<code>Pod</code>里，直接通过9000端口关联即可。数据存储上就必须借助<code>Volumes</code>了，比如挂载同一个<code>nfs</code>，或者挂载同一个空目录，然后在<code>initC</code>容器里将数据写入到这个目录里。</p>
+
+<p>@todo</p>
+
+<h1 id="五-相关资料">五、相关资料</h1>
+
+<h2 id="6-1-官方仓库">6.1 官方仓库</h2>
+
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>官网</th>
+<th>Github</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>Kubernetes</td>
+<td>kubernetes.io</td>
+<td><a href="https://github.com/kubernetes/kubernetes">https://github.com/kubernetes/kubernetes</a></td>
+<td>Kubernetes项目</td>
+</tr>
+
+<tr>
+<td>Etcd</td>
+<td>etcd.io</td>
+<td><a href="https://github.com/etcd-io/etcd">https://github.com/etcd-io/etcd</a></td>
+<td>配置管理</td>
+</tr>
+
+<tr>
+<td>Coredns</td>
+<td>coredns.io</td>
+<td><a href="https://github.com/coredns/coredns">https://github.com/coredns/coredns</a></td>
+<td>DNS服务</td>
+</tr>
+
+<tr>
+<td>Flannel</td>
+<td></td>
+<td><a href="https://github.com/coreos/flannel">https://github.com/coreos/flannel</a></td>
+<td>网络插件</td>
+</tr>
+
+<tr>
+<td>kubeadm</td>
+<td></td>
+<td><a href="https://github.com/kubernetes/kubeadm">https://github.com/kubernetes/kubeadm</a></td>
+<td>k8s安装</td>
+</tr>
+
+<tr>
+<td>minikube</td>
+<td></td>
+<td><a href="https://github.com/kubernetes/minikube">https://github.com/kubernetes/minikube</a></td>
+<td>k8s安装</td>
+</tr>
+
+<tr>
+<td>ingress-nginx</td>
+<td></td>
+<td><a href="https://github.com/kubernetes/ingress-nginx">https://github.com/kubernetes/ingress-nginx</a></td>
+<td>ingress</td>
+</tr>
+
+<tr>
+<td>traefik</td>
+<td>traefik.io</td>
+<td><a href="https://github.com/traefik/traefik">https://github.com/traefik/traefik</a></td>
+<td>ingress</td>
+</tr>
+
+<tr>
+<td>Dashboard</td>
+<td></td>
+<td><a href="https://github.com/kubernetes/dashboard">https://github.com/kubernetes/dashboard</a></td>
+<td></td>
+</tr>
+
+<tr>
+<td>Helm</td>
+<td>helm.sh</td>
+<td><a href="https://github.com/helm/helm">https://github.com/helm/helm</a></td>
+<td>包管理</td>
+</tr>
+
+<tr>
+<td>Prometheus</td>
+<td>prometheus.io</td>
+<td><a href="https://github.com/prometheus/prometheus">https://github.com/prometheus/prometheus</a></td>
+<td>监控报警</td>
+</tr>
+
+<tr>
+<td>Grafana</td>
+<td>grafana.com</td>
+<td><a href="https://github.com/grafana/grafana">https://github.com/grafana/grafana</a></td>
+<td>图表展示</td>
+</tr>
+
+<tr>
+<td>Istio</td>
+<td>istio.io</td>
+<td><a href="https://github.com/istio/istio">https://github.com/istio/istio</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="6-2-个人整理">6.2 个人整理</h2>
+
+<table>
+<thead>
+<tr>
+<th>地址</th>
+<th>说明</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td><a href="docker-start.html">Docker ( 1 ) - 小试Docker容器环境</a></td>
+<td>Docker基本介绍</td>
+</tr>
+
+<tr>
+<td><a href="dockerfile.html">Docker ( 2 ) - Dockerfile</a></td>
+<td>尝试通过Dockerfile来构建镜像</td>
+</tr>
+
+<tr>
+<td><a href="docker-compose.html">Docker ( 3 ) - Docker Compose</a></td>
+<td>通过Docker Compose来组合容器</td>
+</tr>
+
+<tr>
+<td><a href="docker-api.html">Docker ( 4 ) - Docker Api</a></td>
+<td>Docker的API接口与基本架构介绍</td>
+</tr>
+
+<tr>
+<td><a href="docker-summary.html">Docker ( 5 ) - Docker小结</a></td>
+<td>Docker小结</td>
+</tr>
+
+<tr>
+<td><a href="k8s-start.html">Kubernetes基础 ( 1 ) - 环境搭建及概念说明</a></td>
+<td>k8s基础概念介绍，能通过minukube或者docker搭建一套环境。</td>
+</tr>
+
+<tr>
+<td><a href="k8s-yaml.html">Kubernetes基础 ( 2 ) - 资源清单</a></td>
+<td>通过2、3、4三个章节对基础的Pod和资源清单、存储做介绍。</td>
+</tr>
+
+<tr>
+<td><a href="k8s-pod.html">Kubernetes基础 ( 3 ) - Pod</a></td>
+<td>Pod的写法及生命周期介绍</td>
+</tr>
+
+<tr>
+<td><a href="k8s-storage.html">Kubernetes基础 ( 4 ) - 存储</a></td>
+<td>Pod依赖的存储介绍</td>
+</tr>
+
+<tr>
+<td><a href="k8s-controller.html">Kubernetes基础 ( 5 ) - 控制器</a></td>
+<td>各种控制器的初步介绍，通过控制器来管理Pod</td>
+</tr>
+
+<tr>
+<td><a href="k8s-service.html">Kubernetes基础 ( 6 ) - Service</a></td>
+<td>通过Service暴露Pod</td>
+</tr>
+
+<tr>
+<td><a href="k8s-ingress.html">Kubernetes基础 ( 7 ) - Ingress</a></td>
+<td>通过7层负载暴露服务</td>
+</tr>
+
+<tr>
+<td><a href="k8s-scheduler.html">Kubernetes基础 ( 8 ) - 调度器</a></td>
+<td>介绍k8s调度器的逻辑</td>
+</tr>
+
+<tr>
+<td><a href="k8s-example.html">Kubernetes基础 ( 9 ) - 示例</a></td>
+<td>通过示例来演示基本的用法</td>
+</tr>
+
+<tr>
+<td><a href="k8s-summary.html">Kubernetes基础 ( 10 ) - 小结</a></td>
+<td>Kubernetes小结</td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="6-3-容器化经验">6.3 容器化经验</h2>
+
+<ul>
+<li>[1] <a href="https://mp.weixin.qq.com/s/w3tTr29qYelkBeXn1ks4vg">历时3年，美图全面容器化踩过的坑</a></li>
+<li>[2] <a href="https://segmentfault.com/a/1190000016551255">有赞容器化实践</a></li>
+<li>[3] <a href="https://yqh.aliyun.com/detail/15962?utm_content=g_1000154186">独角兽完美日记电商系统容器化改造实践</a></li>
+<li>[4] <a href="https://www.infoq.cn/article/tencent-millions-scale-docker-application-practice/">腾讯万台规模的 Docker 应用实践</a></li>
+<li>[5] <a href="https://www.infoq.cn/article/2016/06/jd-618-docker-cloud-practice/">京东 618：15 万个 Docker 实例，所有业务全部容器化</a></li>
+<li>[6] <a href="https://www.sohu.com/a/207545870_185201">运维的辛酸泪：陌陌K8s容器化改造之路</a></li>
+<li>[7] <a href="https://zhuanlan.zhihu.com/p/86570312">拉勾网基于 UK8S 平台的容器化改造实践</a></li>
+</ul>
+
+<h2 id="6-4-学习资料">6.4 学习资料</h2>
+
+<ul>
+<li>[1] <a href="https://www.kubernetes.org.cn/">kubernetes中文社区</a></li>
+<li>[2] <a href="https://www.cnblogs.com/linuxk/category/1248289.html">Linux系统运维之路</a></li>
+<li>[3] <a href="https://www.cnblogs.com/benjamin77/category/1323077.html">BenjaminYangIn</a></li>
+</ul>
+
+<p><img src="../../static/uploads/k8s-logo.png" alt="" /></p>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-11.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-11.html">2020-11-11 08:45</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/kubernetes.html">Kubernetes</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/k8s-example.html">Kubernetes基础 ( 9 ) - 示例</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/k8s-kubeadm-install.html">通过kubeadm部署Kubernetes集群</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 10 ) - 小结.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Kubernetes基础 ( 10 ) - 小结.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>

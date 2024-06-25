@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Docker ( 5 ) - Docker Api</title>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <style type="text/css">
+    @media (min-width: 1200px) {
+        .content{padding-left:280px;width:100%;max-width:100%;}
+    }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1 class="title">Docker ( 5 ) - Docker Api</h1>
+
+    <a href="/"><img src="/static/img/arrow-back.png" class="title_arrow_back" /></a>
+
+    <nav>
+<ul>
+<li><a href="#一-docker概述">一、Docker概述</a>
+<ul>
+<li><a href="#1-1-docker平台">1.1 Docker平台</a></li>
+<li><a href="#1-2-docker引擎">1.2 Docker引擎</a></li>
+</ul></li>
+<li><a href="#二-docker-api">二、Docker API</a></li>
+<li><a href="#三-docker原理">三、Docker原理</a></li>
+</ul>
+</nav>
+
+<p>了解API之前我们需要了解一下<code>Docker</code>的架构。</p>
+
+<h1 id="一-docker概述">一、Docker概述</h1>
+
+<h2 id="1-1-docker平台">1.1 Docker平台</h2>
+
+<p><code>Docker</code>提供了一种在安全隔离的容器中运行近乎所有应用的方式，这种隔离性和安全性允许你在同一主机上同时运行多个容器，而容器的这种轻量级特性，意味着你可以节省更多的硬件资源，因为你不必消耗运行<code>hypervisor</code>所需要的额外负载。</p>
+
+<p>基于容器虚拟化的工具或者平台可以为你提供如下帮助：</p>
+
+<ul>
+<li>将应用程序（包括支撑的组件）放入<code>Docker</code>容器中；</li>
+<li>将这些容器打包并分发给你的团队，以便于后续的开发和测试；</li>
+<li>将这些容器部署到生产环境中，生产环境可以是本地的数据中心，也可以在云端。</li>
+</ul>
+
+<h2 id="1-2-docker引擎">1.2 Docker引擎</h2>
+
+<p><code>Docker Engine</code>包含以下组件：</p>
+
+<ul>
+<li><code>Docker</code>守护进程（<code>Docker Daemon</code>）</li>
+<li><code>REST API</code>，通过API接口与<code>Docker</code>守护进程交互。</li>
+<li><code>Docker</code> 客户端</li>
+</ul>
+
+<p><img src="../../static/uploads/engine-components-flow.png" alt="" /></p>
+
+<p><code>Docker</code>是<code>Client/Server</code>的架构，<code>Docker</code>客户端与<code>Docker daemon</code>通过<code>REST API</code>交互，<code>Docker daemon</code>负责构建、运行和发布 <code>Docker</code>容器。客户端可以和服务端运行在同一个系统中，也可以不在。</p>
+
+<p><img src="../../static/uploads/architecture.svg" alt="" /></p>
+
+<h1 id="二-docker-api">二、Docker API</h1>
+
+<p>Docker生态中一共有三种API：</p>
+
+<ul>
+<li><code>Registry API</code>: 提供与存储<code>Docker</code>镜像的<code>Docker Registry</code>集成的功能</li>
+<li><code>Docker Hub API</code>: 提供与<code>Docker Hub</code>集成的功能</li>
+<li><code>Docker Remote API</code>: 提供与<code>Docker</code>守护进程进行集成的功能</li>
+</ul>
+
+<p>三种都是RESTful风格的接口，主要了解的是<code>Docker Remote API</code>。</p>
+
+<p>@todo</p>
+
+<h1 id="三-docker原理">三、Docker原理</h1>
+
+<p>通过namespace 来做资源隔离，cgroup 来做资源限制。</p>
+
+<hr />
+
+<ul>
+<li>[1] <a href="https://docs.docker.com/get-started/overview/">Docker overview</a></li>
+<li>[2] <a href="https://docs.docker.com/engine/api/">Develop with Docker Engine API</a></li>
+<li>[3] <a href="https://docs.docker.com/engine/api/latest/">Docker Engine API reference.</a></li>
+<li>[4] <a href="https://www.cnblogs.com/sammyliu/p/5878973.html">理解Docker（3）：Docker 使用 Linux namespace 隔离容器的运行环境</a></li>
+<li>[5] <a href="https://www.cnblogs.com/sammyliu/p/5886833.html">理解Docker（4）：Docker 容器使用 cgroups 限制资源使用</a></li>
+</ul>
+
+    <div class="eof">-- EOF --</div>
+    <div class="eof_arrow">
+        <a href="/"><img src="/static/img/arrow-back.png" style="width:25px;height:25px;" /></a>
+    </div>
+    
+    <div class="eof_tag">
+        最后更新于：
+        <code style="border:0px;background:none;"><a href="/2020-08.html">2024-01-14 17:25</a></code>
+    </div>
+    
+    <div class="eof_tag">
+        发表于：
+        <code style="border:0px;background:none;"><a href="/2020-08.html">2020-08-02 21:00</a></code>
+    </div>
+    <div class="eof_tag">
+        标签：
+        <code style="border:0px;background:none;"><a href="/tag/docker.html">Docker</a></code>
+        <code style="border:0px;background:none;"><a href="/tag/容器化.html">容器化</a></code>
+    </div>
+
+    <div id="footer">
+        <ul>
+            <li>
+            <b>上一篇</b>：<a href="/bike-sharing-v2.html">共享单车2.0：创业青年退场，美团滴滴阿里导演成人剧</a>
+            </li>
+            
+            <li>
+            <b>下一篇</b>：<a href="/docker-summary.html">Docker ( 6 ) - Docker小结</a>
+            </li>
+            <li>
+                <b>Github地址</b>：<a href="https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Docker ( 5 ) - Docker Api.md">https://github.com/flowxaa/flowxa.go/blob/master/posts\kubernetes\Docker ( 5 ) - Docker Api.md</a>
+            <li>
+            <li>
+                @2024 Flowxa&nbsp;[Hosted by <a href="https://pages.github.com/" style="font-weight: bold" target="_blank">Github Pages</a>]
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="top"><a href="#"><img src="/static/img/arrow-top.png" style="width:40px;height:40px;" /></a></div>
+
+
+</body>
+</html>
